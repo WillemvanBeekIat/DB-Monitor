@@ -11,6 +11,11 @@
         <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">&#8635; Refresh</button>
     </div>
 
+    @if (_reorgError != null)
+    {
+        <div class="alert alert-critical" role="alert">⚠️ @_reorgError</div>
+    }
+
     @if (_loading)
     {
         <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
@@ -84,8 +89,8 @@
 
 @if (_reorganizeTarget != null)
 {
-    <div class="modal-backdrop">
-        <div class="modal">
+    <div class="modal-backdrop" @onclick="() => _reorganizeTarget = null">
+        <div class="modal" @onclick:stopPropagation>
             <h3>🔧 Confirm Reorganize Index</h3>
             <p>
                 Reorganize index <strong>@_reorganizeTarget.IndexName</strong>
@@ -93,10 +98,6 @@
                 Fragmentation: @_reorganizeTarget.FragmentationPercent.ToString("F1")%
                 &middot; Pages: @_reorganizeTarget.PageCount.ToString("N0")
             </p>
-            @if (_reorgError != null)
-            {
-                <div class="alert alert-critical">@_reorgError</div>
-            }
             <div class="modal-actions">
                 <button class="btn btn-secondary" @onclick="() => _reorganizeTarget = null">Cancel</button>
                 <button class="btn btn-success" @onclick="ExecuteReorganize">🔧 Reorganize</button>
@@ -127,16 +128,24 @@
     private async Task ExecuteReorganize()
     {
         if (_reorganizeTarget == null) return;
-        _reorgError = null;
+        var target = _reorganizeTarget;
+        _reorganizeTarget = null;   // Dismiss the modal immediately so the backdrop is removed
+        _loading = true;
+        StateHasChanged();          // Re-render now: modal gone, loading spinner shown
         try
         {
-            await ActionExecutor.ReorganizeIndexAsync(_reorganizeTarget, ActionTrigger.Manual, manualOverride: false);
-            _reorganizeTarget = null;
-            await RefreshAsync();
+            _reorgError = null;
+            await ActionExecutor.ReorganizeIndexAsync(target, ActionTrigger.Manual, manualOverride: true);
+            await State.RefreshAsync();
+            _indexes = State.LastIndexes;
         }
         catch (Exception ex)
         {
             _reorgError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
         }
     }
 
