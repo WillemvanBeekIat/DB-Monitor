@@ -1,0 +1,35 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+*.userprefs
+packages/
+*.nupkg
+*.snupkg
+project.lock.json
+.nuget/
+
+# Build output
+publish/
+dist/
+
+# App data (generated at runtime)
+data/
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Rider / JetBrains
+.idea/
+
+# Test results
+TestResults/
+coverage/
+*.coverage
+*.coveragexml

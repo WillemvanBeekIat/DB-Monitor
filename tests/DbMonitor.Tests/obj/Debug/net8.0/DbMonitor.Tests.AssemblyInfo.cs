@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DbMonitor.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b357c084ce78a4789cc578a1270d6a602b1a26e3")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1b41435efed5b968cdb1e156eda449957267322b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DbMonitor.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DbMonitor.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
