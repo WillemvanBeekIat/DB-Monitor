@@ -1,0 +1,144 @@
+@page "/indexes"
+@rendermode InteractiveServer
+@inject MonitoringStateService State
+@inject IActionExecutor ActionExecutor
+
+<PageTitle>Indexes – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h1 class="page-title" style="margin-bottom:0">Monitored Indexes</h1>
+        <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">&#8635; Refresh</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
+    }
+    else if (!_indexes.Any())
+    {
+        <div class="empty-state">
+            <span class="empty-icon">📋</span>
+            <p>No monitored indexes configured</p>
+            <span style="font-size:13px;color:var(--text-muted)">Add indexes to MonitoredIndexes in appsettings.json</span>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Database</th>
+                        <th>Schema.Table</th>
+                        <th>Index</th>
+                        <th>Fragmentation</th>
+                        <th>Pages</th>
+                        <th>Usage Score</th>
+                        <th>Eligible</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var idx in _indexes)
+                    {
+                        <tr>
+                            <td>@idx.Database</td>
+                            <td>@($"{idx.Schema}.{idx.Table}")</td>
+                            <td style="font-weight:600">@idx.IndexName</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:8px">
+                                    <div class="progress-bar" style="width:80px">
+                                        <div class="progress-fill @GetFragClass(idx.FragmentationPercent)"
+                                             style="width:@(Math.Min(100, idx.FragmentationPercent))%"></div>
+                                    </div>
+                                    <span class="@(idx.FragmentationPercent >= 30 ? "status-critical" : idx.FragmentationPercent >= 10 ? "status-warning" : "")">
+                                        @idx.FragmentationPercent.ToString("F1")%
+                                    </span>
+                                </div>
+                            </td>
+                            <td>@idx.PageCount.ToString("N0")</td>
+                            <td>@idx.UsageScore.ToString("F1")</td>
+                            <td>
+                                @if (idx.IsEligible)
+                                {
+                                    <span class="badge badge-warning">Actionable</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-info" title="@idx.IneligibilityReason">Not Eligible</span>
+                                }
+                            </td>
+                            <td>
+                                <button class="btn btn-success btn-sm" @onclick="() => ConfirmReorganize(idx)">
+                                    🔧 Reorganize
+                                </button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (_reorganizeTarget != null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>🔧 Confirm Reorganize Index</h3>
+            <p>
+                Reorganize index <strong>@_reorganizeTarget.IndexName</strong>
+                on <strong>@($"{_reorganizeTarget.Database}.{_reorganizeTarget.Schema}.{_reorganizeTarget.Table}")</strong>?<br />
+                Fragmentation: @_reorganizeTarget.FragmentationPercent.ToString("F1")%
+                &middot; Pages: @_reorganizeTarget.PageCount.ToString("N0")
+            </p>
+            @if (_reorgError != null)
+            {
+                <div class="alert alert-critical">@_reorgError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @onclick="() => _reorganizeTarget = null">Cancel</button>
+                <button class="btn btn-success" @onclick="ExecuteReorganize">🔧 Reorganize</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<IndexInfo> _indexes = Array.Empty<IndexInfo>();
+    private bool _loading = false;
+    private IndexInfo? _reorganizeTarget;
+    private string? _reorgError;
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        await State.RefreshAsync();
+        _indexes = State.LastIndexes;
+        _loading = false;
+    }
+
+    private void ConfirmReorganize(IndexInfo idx) { _reorganizeTarget = idx; _reorgError = null; }
+
+    private async Task ExecuteReorganize()
+    {
+        if (_reorganizeTarget == null) return;
+        _reorgError = null;
+        try
+        {
+            await ActionExecutor.ReorganizeIndexAsync(_reorganizeTarget, ActionTrigger.Manual, manualOverride: false);
+            _reorganizeTarget = null;
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            _reorgError = ex.Message;
+        }
+    }
+
+    private static string GetFragClass(double pct) => pct >= 30 ? "high" : pct >= 10 ? "medium" : "low";
+}

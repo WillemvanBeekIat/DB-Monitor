@@ -1,0 +1,188 @@
+@page "/queries"
+@rendermode InteractiveServer
+@inject MonitoringStateService State
+@inject IActionExecutor ActionExecutor
+@inject IJSRuntime JS
+
+<PageTitle>Long-Running Queries – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h1 class="page-title" style="margin-bottom:0">Long-Running Queries</h1>
+        <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">&#8635; Refresh</button>
+    </div>
+
+    <div class="filter-bar">
+        <input @bind="_filter" @bind:event="oninput" placeholder="Filter by login, host, db, SQL..." />
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
+    }
+    else if (!_queries.Any())
+    {
+        <div class="empty-state">
+            <span class="empty-icon">✅</span>
+            <p>No long-running queries detected</p>
+        </div>
+    }
+    else
+    {
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Session</th>
+                        <th>Login</th>
+                        <th>Host</th>
+                        <th>Database</th>
+                        <th>Elapsed</th>
+                        <th>Command</th>
+                        <th>Wait Type</th>
+                        <th>Blocking</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var q in Filtered)
+                    {
+                        <tr>
+                            <td style="font-weight:600">@q.SessionId</td>
+                            <td>@q.LoginName</td>
+                            <td>@q.HostName</td>
+                            <td>@q.DatabaseName</td>
+                            <td class="@(q.ElapsedDuration.TotalMinutes >= 10 ? "status-critical" : q.ElapsedDuration.TotalMinutes >= 5 ? "status-warning" : "")">
+                                @FormatDuration(q.ElapsedDuration)
+                            </td>
+                            <td>@q.Command</td>
+                            <td>@(string.IsNullOrEmpty(q.WaitType) ? "-" : q.WaitType)</td>
+                            <td>@(q.BlockingSessionId.HasValue ? q.BlockingSessionId.Value.ToString() : "-")</td>
+                            <td>
+                                @if (q.WouldBeKilled)
+                                {
+                                    <span class="badge badge-critical">Will Kill</span>
+                                }
+                                else if (!string.IsNullOrEmpty(q.SkipReason))
+                                {
+                                    <span class="badge badge-info" title="@q.SkipReason">Protected</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-info">Active</span>
+                                }
+                            </td>
+                            <td>
+                                <div style="display:flex;gap:6px">
+                                    @if (!string.IsNullOrEmpty(q.SqlText))
+                                    {
+                                        <button class="btn btn-secondary btn-sm" @onclick="() => ShowSql(q)">View SQL</button>
+                                    }
+                                    <button class="btn btn-danger btn-sm" @onclick="() => ConfirmKill(q)">Kill</button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@if (_sqlModal != null)
+{
+    <div class="modal-backdrop" @onclick="CloseSqlModal">
+        <div class="modal" @onclick:stopPropagation>
+            <h3>SQL Text &ndash; Session @_sqlModal.SessionId</h3>
+            <div class="sql-block">@_sqlModal.SqlText</div>
+            <div class="modal-actions" style="margin-top:16px">
+                <button class="btn btn-secondary btn-sm" @onclick="() => CopySql(_sqlModal.SqlText!)">&#128203; Copy</button>
+                <button class="btn btn-secondary btn-sm" @onclick="CloseSqlModal">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_killTarget != null)
+{
+    <div class="modal-backdrop">
+        <div class="modal">
+            <h3>&#9888; Confirm Kill Session</h3>
+            <p>
+                Kill session <strong>@_killTarget.SessionId</strong> (@_killTarget.LoginName @@ @_killTarget.HostName)?<br />
+                Elapsed: @FormatDuration(_killTarget.ElapsedDuration)<br />
+                @if (!string.IsNullOrEmpty(_killTarget.SkipReason))
+                {
+                    <span style="color:var(--warning)">&#9888; Override: @_killTarget.SkipReason</span>
+                }
+            </p>
+            @if (_killError != null)
+            {
+                <div class="alert alert-critical">@_killError</div>
+            }
+            <div class="modal-actions">
+                <button class="btn btn-secondary" @onclick="() => _killTarget = null">Cancel</button>
+                <button class="btn btn-danger" @onclick="ExecuteKill">&#9632; Kill Session</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<LongRunningQuery> _queries = Array.Empty<LongRunningQuery>();
+    private bool _loading = false;
+    private string _filter = "";
+    private LongRunningQuery? _sqlModal;
+    private LongRunningQuery? _killTarget;
+    private string? _killError;
+
+    private IEnumerable<LongRunningQuery> Filtered => string.IsNullOrWhiteSpace(_filter)
+        ? _queries
+        : _queries.Where(q =>
+            (q.LoginName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (q.HostName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (q.DatabaseName?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (q.SqlText?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        await State.RefreshAsync();
+        _queries = State.LastQueries;
+        _loading = false;
+    }
+
+    private void ShowSql(LongRunningQuery q) => _sqlModal = q;
+    private void CloseSqlModal() => _sqlModal = null;
+    private void ConfirmKill(LongRunningQuery q) { _killTarget = q; _killError = null; }
+
+    private async Task CopySql(string sql)
+    {
+        try { await JS.InvokeVoidAsync("navigator.clipboard.writeText", sql); } catch { /* ignore */ }
+    }
+
+    private async Task ExecuteKill()
+    {
+        if (_killTarget == null) return;
+        _killError = null;
+        try
+        {
+            await ActionExecutor.KillQueryAsync(_killTarget, ActionTrigger.Manual, manualOverride: true);
+            _killTarget = null;
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            _killError = ex.Message;
+        }
+    }
+
+    private static string FormatDuration(TimeSpan t) =>
+        t.TotalHours >= 1 ? $"{(int)t.TotalHours}h {t.Minutes}m {t.Seconds}s" :
+        t.TotalMinutes >= 1 ? $"{t.Minutes}m {t.Seconds}s" :
+        $"{t.Seconds}s";
+}

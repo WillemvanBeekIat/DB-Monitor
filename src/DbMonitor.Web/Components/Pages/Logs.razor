@@ -1,0 +1,154 @@
+@page "/logs"
+@rendermode InteractiveServer
+@inject ILogFileReader LogReader
+
+<PageTitle>Logs – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <h1 class="page-title">Logs / History</h1>
+
+    <div class="card" style="margin-bottom:20px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end">
+            <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+                <label>Current Log File</label>
+                <div style="font-family:monospace;font-size:12px;color:var(--text-muted);padding-top:4px">
+                    @LogReader.GetCurrentLogFilePath()
+                </div>
+            </div>
+            <button class="btn btn-primary btn-sm" @onclick="LoadCurrentLog">Load Current Log</button>
+        </div>
+
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+            <div style="font-size:13px;font-weight:600;margin-bottom:8px">Open Older Log File</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <select @bind="_selectedFile" style="flex:1;min-width:200px">
+                    <option value="">-- select a file --</option>
+                    @foreach (var f in _availableFiles)
+                    {
+                        <option value="@f">@System.IO.Path.GetFileName(f)</option>
+                    }
+                </select>
+                <button class="btn btn-secondary btn-sm" @onclick="LoadSelectedFile" disabled="@string.IsNullOrEmpty(_selectedFile)">Load</button>
+            </div>
+        </div>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div><p>Loading log events...</p></div>
+    }
+    else if (_loadError != null)
+    {
+        <div class="alert alert-critical">@_loadError</div>
+    }
+    else if (!_events.Any())
+    {
+        <div class="empty-state">
+            <span class="empty-icon">📄</span>
+            <p>No log events loaded</p>
+            <span style="font-size:13px;color:var(--text-muted)">Click "Load Current Log" to view today's events</span>
+        </div>
+    }
+    else
+    {
+        <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--text-muted)">@_events.Count events loaded</span>
+            <input @bind="_logFilter" @bind:event="oninput" placeholder="Filter..." style="width:200px" />
+        </div>
+
+        @foreach (var ev in FilteredEvents.Take(500))
+        {
+            var levelClass = (ev.Level?.ToLower() ?? "information") switch
+            {
+                "warning" => "level-warning",
+                "error" or "fatal" => "level-error",
+                "critical" => "level-critical",
+                _ => "level-information"
+            };
+            <div class="log-event @levelClass">
+                <div class="log-time">
+                    @ev.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff") UTC
+                    @if (!string.IsNullOrEmpty(ev.Level)) { <span class="badge badge-info" style="margin-left:6px">@ev.Level</span> }
+                    @if (!string.IsNullOrEmpty(ev.EventType)) { <span class="badge badge-info" style="margin-left:4px">@ev.EventType</span> }
+                </div>
+                <div class="log-msg">@(ev.Message ?? ev.MessageTemplate ?? "(no message)")</div>
+                @if (!string.IsNullOrEmpty(ev.Exception))
+                {
+                    <div class="sql-block" style="margin-top:6px;font-size:11px">@ev.Exception</div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<LogEvent> _events = Array.Empty<LogEvent>();
+    private IReadOnlyList<string> _availableFiles = Array.Empty<string>();
+    private bool _loading = false;
+    private string? _loadError;
+    private string _selectedFile = "";
+    private string _logFilter = "";
+
+    private IEnumerable<LogEvent> FilteredEvents => string.IsNullOrWhiteSpace(_logFilter)
+        ? _events
+        : _events.Where(e =>
+            (e.Message?.Contains(_logFilter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (e.MessageTemplate?.Contains(_logFilter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (e.EventType?.Contains(_logFilter, StringComparison.OrdinalIgnoreCase) ?? false));
+
+    protected override void OnInitialized()
+    {
+        _availableFiles = LogReader.GetAvailableLogFiles();
+    }
+
+    private async Task LoadCurrentLog()
+    {
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        try
+        {
+            var path = LogReader.GetCurrentLogFilePath();
+            if (!System.IO.File.Exists(path))
+            {
+                _events = Array.Empty<LogEvent>();
+                _loadError = $"Log file not found: {path}";
+                return;
+            }
+
+            using var stream = System.IO.File.OpenRead(path);
+            _events = await LogReader.ReadEventsAsync(stream);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadSelectedFile()
+    {
+        if (string.IsNullOrEmpty(_selectedFile)) return;
+        _loading = true;
+        _loadError = null;
+        StateHasChanged();
+
+        try
+        {
+            using var stream = System.IO.File.OpenRead(_selectedFile);
+            _events = await LogReader.ReadEventsAsync(stream);
+        }
+        catch (Exception ex)
+        {
+            _loadError = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

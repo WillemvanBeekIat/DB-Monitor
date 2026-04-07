@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DbMonitor.Core/DbMonitor.Core.csproj" />
+    <Project Path="src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj" />
+    <Project Path="src/DbMonitor.SqlServer/DbMonitor.SqlServer.csproj" />
+    <Project Path="src/DbMonitor.Web/DbMonitor.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DbMonitor.Tests/DbMonitor.Tests.csproj" />
+  </Folder>
+</Solution>

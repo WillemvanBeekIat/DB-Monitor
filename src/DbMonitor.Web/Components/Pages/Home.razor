@@ -1,0 +1,232 @@
+@page "/"
+@rendermode InteractiveServer
+@implements IDisposable
+@inject MonitoringStateService State
+
+<PageTitle>Dashboard – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h1 class="page-title" style="margin-bottom:0">Dashboard</h1>
+        <div style="display:flex;align-items:center;gap:12px">
+            @if (_loading)
+            {
+                <div class="spinner" style="width:20px;height:20px"></div>
+            }
+            <span style="font-size:12px;color:var(--text-muted)">
+                @(State.LastRefresh == DateTimeOffset.MinValue ? "Never refreshed" : $"Updated {State.LastRefresh:HH:mm:ss}")
+            </span>
+            <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">&#8635; Refresh</button>
+        </div>
+    </div>
+
+    @if (State.LastSummary == null)
+    {
+        <div class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading monitoring data...</p>
+        </div>
+    }
+    else
+    {
+        var s = State.LastSummary;
+
+        <div class="card" style="border-left: 4px solid @GetStatusColor(s.OverallStatus);margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:16px">
+                <span style="font-size:40px">@GetStatusIcon(s.OverallStatus)</span>
+                <div>
+                    <div style="font-size:20px;font-weight:700;color:@GetStatusColor(s.OverallStatus)">
+                        @s.OverallStatus
+                    </div>
+                    <div style="color:var(--text-muted);font-size:13px">
+                        Overall system health &middot; @s.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                    </div>
+                    @if (s.IsDryRunEnabled)
+                    {
+                        <span class="badge badge-dry-run" style="margin-top:6px">DRY RUN MODE</span>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <div class="card-grid">
+            <div class="stat-card">
+                <span class="label">Instance</span>
+                <span class="value @GetStatusClass(s.InstanceHealth?.IsReachable == true ? HealthStatus.Healthy : HealthStatus.Critical)">
+                    @(s.InstanceHealth?.IsReachable == true ? "Online" : "Offline")
+                </span>
+                <span class="sub">@(s.InstanceHealth?.ProbeQueryMs.HasValue == true ? $"Probe: {s.InstanceHealth.ProbeQueryMs:F0}ms" : "")</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="label">Databases</span>
+                <span class="value">@(s.InstanceHealth?.Databases.Count ?? 0)</span>
+                <span class="sub @(s.InstanceHealth?.Databases.Any(d => !d.IsOnline) == true ? "status-warning" : "")">
+                    @(s.InstanceHealth?.Databases.Count(d => d.IsOnline) ?? 0) online
+                </span>
+            </div>
+
+            <div class="stat-card">
+                <span class="label">Long Queries</span>
+                <span class="value @(s.LongRunningQueryCount > 0 ? "status-warning" : "")">@s.LongRunningQueryCount</span>
+                <span class="sub">above threshold</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="label">Fragmented Indexes</span>
+                <span class="value @(s.ActionableFragmentedIndexCount > 0 ? "status-warning" : "")">@s.ActionableFragmentedIndexCount</span>
+                <span class="sub">actionable</span>
+            </div>
+
+            <div class="stat-card">
+                <span class="label">SQL Errors</span>
+                <span class="value @(s.InternalErrorCount > 0 ? "status-critical" : "")">@s.InternalErrorCount</span>
+                <span class="sub">recent entries</span>
+            </div>
+
+            @if (s.RecentLatency.Count > 0)
+            {
+                var latest = s.RecentLatency[^1];
+                <div class="stat-card">
+                    <span class="label">Latency</span>
+                    <span class="value @GetStatusClass(latest.Status)">@latest.ProbeQueryMs.ToString("F0")ms</span>
+                    <span class="sub">probe query</span>
+                </div>
+            }
+        </div>
+
+        @if (s.RecentLatency.Count > 1)
+        {
+            <div class="card">
+                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text-muted)">Latency (last @s.RecentLatency.Count readings)</h3>
+                <div class="chart-container" style="height:80px">
+                    @{
+                        var maxMs = s.RecentLatency.Max(l => l.ProbeQueryMs);
+                        foreach (var lat in s.RecentLatency)
+                        {
+                            var pct = maxMs > 0 ? (lat.ProbeQueryMs / maxMs * 100) : 10;
+                            var cls = lat.Status == HealthStatus.Critical ? "critical" : lat.Status == HealthStatus.Warning ? "warning" : "healthy";
+                            <div class="chart-bar @cls" style="height:@(pct)%" title="@lat.ProbeQueryMs.ToString("F0")ms @lat.Timestamp.ToString("HH:mm:ss")"></div>
+                        }
+                    }
+                </div>
+            </div>
+        }
+
+        @if (s.InstanceHealth?.Databases.Count > 0)
+        {
+            <div class="card">
+                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Databases</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr><th>Database</th><th>State</th><th>Reachable</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var db in s.InstanceHealth.Databases)
+                            {
+                                <tr>
+                                    <td>@db.DatabaseName</td>
+                                    <td><span class="badge @(db.IsOnline ? "badge-healthy" : "badge-critical")">@db.State</span></td>
+                                    <td>@(db.IsReachable ? "✅" : "❌")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        @if (s.RecentActions.Count > 0)
+        {
+            <div class="card">
+                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Recent Actions</h3>
+                @foreach (var a in s.RecentActions.Take(5))
+                {
+                    <div class="audit-entry">
+                        <span class="audit-icon">@GetActionIcon(a.ActionType)</span>
+                        <div class="audit-body">
+                            <div class="audit-title">@a.Target</div>
+                            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">@a.Reason</div>
+                            <div class="audit-meta">
+                                <span>@a.Timestamp.ToString("HH:mm:ss")</span>
+                                <span class="badge @GetOutcomeBadge(a.Outcome)">@a.Outcome</span>
+                                @if (a.IsDryRun) { <span class="badge badge-dry-run">DRY RUN</span> }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private bool _loading = false;
+    private Timer? _autoRefreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnStateChanged += OnStateChanged;
+        await RefreshAsync();
+        _autoRefreshTimer = new Timer(_ => InvokeAsync(RefreshAsync), null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+    }
+
+    private async Task RefreshAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        await State.RefreshAsync();
+        _loading = false;
+        StateHasChanged();
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        State.OnStateChanged -= OnStateChanged;
+        _autoRefreshTimer?.Dispose();
+    }
+
+    private static string GetStatusColor(HealthStatus s) => s switch
+    {
+        HealthStatus.Healthy => "var(--healthy)",
+        HealthStatus.Warning => "var(--warning)",
+        HealthStatus.Critical => "var(--critical)",
+        _ => "var(--text-muted)"
+    };
+
+    private static string GetStatusClass(HealthStatus s) => s switch
+    {
+        HealthStatus.Healthy => "status-healthy",
+        HealthStatus.Warning => "status-warning",
+        HealthStatus.Critical => "status-critical",
+        _ => "status-unknown"
+    };
+
+    private static string GetStatusIcon(HealthStatus s) => s switch
+    {
+        HealthStatus.Healthy => "✅",
+        HealthStatus.Warning => "⚠️",
+        HealthStatus.Critical => "🔴",
+        _ => "❓"
+    };
+
+    private static string GetActionIcon(ActionType t) => t switch
+    {
+        ActionType.ReorganizeIndex => "🔧",
+        ActionType.KillQuery => "🛑",
+        _ => "⚡"
+    };
+
+    private static string GetOutcomeBadge(ActionOutcome o) => o switch
+    {
+        ActionOutcome.Executed => "badge-healthy",
+        ActionOutcome.DryRun => "badge-dry-run",
+        ActionOutcome.Skipped => "badge-info",
+        ActionOutcome.Failed => "badge-critical",
+        _ => "badge-info"
+    };
+}
+
