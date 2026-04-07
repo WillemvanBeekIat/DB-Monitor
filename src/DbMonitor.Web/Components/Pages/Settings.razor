@@ -7,15 +7,17 @@
 @inject IOptions<LatencyOptions> LatOpts
 @inject IConfigWriter ConfigWriter
 @inject IOptions<ConfigMutationOptions> MutationOpts
+@using System.Text.Json
+@using System.Text.Json.Nodes
 
 <PageTitle>Settings – DB Monitor</PageTitle>
 
 <div class="page-content">
     <h1 class="page-title">Settings</h1>
 
-    @if (_saved)
+    @if (_saved != null)
     {
-        <div class="alert alert-success" style="margin-bottom:16px">✅ Settings saved successfully</div>
+        <div class="alert alert-success" style="margin-bottom:16px">✅ @_saved saved successfully</div>
     }
     @if (_saveError != null)
     {
@@ -54,27 +56,205 @@
 
     <div class="settings-section">
         <h3>SQL Server</h3>
-        <div class="setting-row"><span class="setting-key">Connection String</span><span class="setting-value">@Masked(SqlOpts.Value.ConnectionString)</span></div>
-        <div class="setting-row"><span class="setting-key">Connection Timeout</span><span class="setting-value">@SqlOpts.Value.ConnectionTimeoutSeconds s</span></div>
-        <div class="setting-row"><span class="setting-key">Command Timeout</span><span class="setting-value">@SqlOpts.Value.CommandTimeoutSeconds s</span></div>
-        <div class="setting-row"><span class="setting-key">Included Databases</span><span class="setting-value">@(SqlOpts.Value.IncludedDatabases.Count == 0 ? "All" : string.Join(", ", SqlOpts.Value.IncludedDatabases))</span></div>
-        <div class="setting-row"><span class="setting-key">Excluded Databases</span><span class="setting-value">@string.Join(", ", SqlOpts.Value.ExcludedDatabases)</span></div>
+        <div class="setting-row">
+            <span class="setting-key">Connection String</span>
+            @if (CanWriteSettings)
+            {
+                <input class="setting-input setting-input-wide" type="text" @bind="_connString" placeholder="server=...;database=..." />
+            }
+            else
+            {
+                <span class="setting-value">@Masked(SqlOpts.Value.ConnectionString)</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Connection Timeout</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_connTimeout" />
+                    <span class="setting-unit">s</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@SqlOpts.Value.ConnectionTimeoutSeconds s</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Command Timeout</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_cmdTimeout" />
+                    <span class="setting-unit">s</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@SqlOpts.Value.CommandTimeoutSeconds s</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Included Databases</span>
+            @if (CanWriteSettings)
+            {
+                <input class="setting-input" type="text" @bind="_includedDbs" placeholder="All (comma-separated to filter)" />
+            }
+            else
+            {
+                <span class="setting-value">@(SqlOpts.Value.IncludedDatabases.Count == 0 ? "All" : string.Join(", ", SqlOpts.Value.IncludedDatabases))</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Excluded Databases</span>
+            @if (CanWriteSettings)
+            {
+                <input class="setting-input" type="text" @bind="_excludedDbs" placeholder="e.g. tempdb" />
+            }
+            else
+            {
+                <span class="setting-value">@string.Join(", ", SqlOpts.Value.ExcludedDatabases)</span>
+            }
+        </div>
+        @if (CanWriteSettings)
+        {
+            <div style="margin-top:14px;display:flex;justify-content:flex-end">
+                <button class="btn btn-primary" @onclick="SaveSqlServer">Save SQL Server</button>
+            </div>
+        }
     </div>
 
     <div class="settings-section">
         <h3>Monitoring Intervals</h3>
-        <div class="setting-row"><span class="setting-key">Instance Probe</span><span class="setting-value">@MonOpts.Value.InstanceProbeIntervalSeconds s</span></div>
-        <div class="setting-row"><span class="setting-key">Latency</span><span class="setting-value">@MonOpts.Value.LatencyIntervalSeconds s</span></div>
-        <div class="setting-row"><span class="setting-key">Long-Running Queries</span><span class="setting-value">@MonOpts.Value.LongRunningQueryIntervalSeconds s</span></div>
-        <div class="setting-row"><span class="setting-key">Fragmentation</span><span class="setting-value">@MonOpts.Value.FragmentationIntervalMinutes min</span></div>
-        <div class="setting-row"><span class="setting-key">Error Log</span><span class="setting-value">@MonOpts.Value.ErrorLogIntervalSeconds s</span></div>
+        <div class="setting-row">
+            <span class="setting-key">Instance Probe</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_instanceProbe" />
+                    <span class="setting-unit">s</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@MonOpts.Value.InstanceProbeIntervalSeconds s</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Latency</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_latencyInterval" />
+                    <span class="setting-unit">s</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@MonOpts.Value.LatencyIntervalSeconds s</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Long-Running Queries</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_lrqInterval" />
+                    <span class="setting-unit">s</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@MonOpts.Value.LongRunningQueryIntervalSeconds s</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Fragmentation</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_fragInterval" />
+                    <span class="setting-unit">min</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@MonOpts.Value.FragmentationIntervalMinutes min</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Error Log</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_errorLogInterval" />
+                    <span class="setting-unit">s</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@MonOpts.Value.ErrorLogIntervalSeconds s</span>
+            }
+        </div>
+        @if (CanWriteSettings)
+        {
+            <div style="margin-top:14px;display:flex;justify-content:flex-end">
+                <button class="btn btn-primary" @onclick="SaveMonitoring">Save Monitoring Intervals</button>
+            </div>
+        }
     </div>
 
     <div class="settings-section">
         <h3>Latency Thresholds</h3>
-        <div class="setting-row"><span class="setting-key">Warning</span><span class="setting-value">@LatOpts.Value.WarningMs ms</span></div>
-        <div class="setting-row"><span class="setting-key">Critical</span><span class="setting-value">@LatOpts.Value.CriticalMs ms</span></div>
-        <div class="setting-row"><span class="setting-key">Moving Average Window</span><span class="setting-value">@LatOpts.Value.MovingAverageWindow readings</span></div>
+        <div class="setting-row">
+            <span class="setting-key">Warning</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" step="any" @bind="_warningMs" />
+                    <span class="setting-unit">ms</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@LatOpts.Value.WarningMs ms</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Critical</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" step="any" @bind="_criticalMs" />
+                    <span class="setting-unit">ms</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@LatOpts.Value.CriticalMs ms</span>
+            }
+        </div>
+        <div class="setting-row">
+            <span class="setting-key">Moving Average Window</span>
+            @if (CanWriteSettings)
+            {
+                <div style="display:flex;align-items:center;gap:6px">
+                    <input class="setting-input setting-input-number" type="number" min="1" @bind="_movingAvgWindow" />
+                    <span class="setting-unit">readings</span>
+                </div>
+            }
+            else
+            {
+                <span class="setting-value">@LatOpts.Value.MovingAverageWindow readings</span>
+            }
+        </div>
+        @if (CanWriteSettings)
+        {
+            <div style="margin-top:14px;display:flex;justify-content:flex-end">
+                <button class="btn btn-primary" @onclick="SaveLatency">Save Latency Thresholds</button>
+            </div>
+        }
     </div>
 
     <div class="settings-section">
@@ -96,15 +276,51 @@
 @code {
     private bool _fragDryRun;
     private bool _lrqDryRun;
-    private bool _saved = false;
+    private string? _saved;
     private string? _saveError;
 
+    // SQL Server
+    private string _connString = "";
+    private int _connTimeout;
+    private int _cmdTimeout;
+    private string _includedDbs = "";
+    private string _excludedDbs = "";
+
+    // Monitoring Intervals
+    private int _instanceProbe;
+    private int _latencyInterval;
+    private int _lrqInterval;
+    private int _fragInterval;
+    private int _errorLogInterval;
+
+    // Latency Thresholds
+    private double _warningMs;
+    private double _criticalMs;
+    private int _movingAvgWindow;
+
     private bool CanWrite => MutationOpts.Value.AllowDryRunToggleWriteback;
+    private bool CanWriteSettings => MutationOpts.Value.AllowSettingsWriteback;
 
     protected override void OnInitialized()
     {
         _fragDryRun = FragOpts.Value.DryRun;
         _lrqDryRun = LrqOpts.Value.DryRun;
+
+        _connString = SqlOpts.Value.ConnectionString;
+        _connTimeout = SqlOpts.Value.ConnectionTimeoutSeconds;
+        _cmdTimeout = SqlOpts.Value.CommandTimeoutSeconds;
+        _includedDbs = string.Join(", ", SqlOpts.Value.IncludedDatabases);
+        _excludedDbs = string.Join(", ", SqlOpts.Value.ExcludedDatabases);
+
+        _instanceProbe = MonOpts.Value.InstanceProbeIntervalSeconds;
+        _latencyInterval = MonOpts.Value.LatencyIntervalSeconds;
+        _lrqInterval = MonOpts.Value.LongRunningQueryIntervalSeconds;
+        _fragInterval = MonOpts.Value.FragmentationIntervalMinutes;
+        _errorLogInterval = MonOpts.Value.ErrorLogIntervalSeconds;
+
+        _warningMs = LatOpts.Value.WarningMs;
+        _criticalMs = LatOpts.Value.CriticalMs;
+        _movingAvgWindow = LatOpts.Value.MovingAverageWindow;
     }
 
     private Task OnFragDryRunChanged(ChangeEventArgs e) => ToggleDryRun(e, "Fragmentation");
@@ -113,7 +329,7 @@
     private async Task ToggleDryRun(ChangeEventArgs e, string section)
     {
         if (!CanWrite) return;
-        _saved = false;
+        _saved = null;
         _saveError = null;
 
         var newValue = (bool)(e.Value ?? false);
@@ -124,9 +340,9 @@
             if (section == "Fragmentation") _fragDryRun = newValue;
             else if (section == "LongRunningQueries") _lrqDryRun = newValue;
 
-            _saved = true;
+            _saved = "Actions";
             await Task.Delay(3000);
-            _saved = false;
+            _saved = null;
             StateHasChanged();
         }
         catch (Exception ex)
@@ -134,6 +350,64 @@
             _saveError = $"Failed to save: {ex.Message}";
         }
     }
+
+    private async Task SaveSqlServer()
+    {
+        await SaveSection("SqlServer", "SQL Server", new Dictionary<string, JsonNode?>
+        {
+            ["ConnectionString"] = JsonValue.Create(_connString),
+            ["ConnectionTimeoutSeconds"] = JsonValue.Create(_connTimeout),
+            ["CommandTimeoutSeconds"] = JsonValue.Create(_cmdTimeout),
+            ["IncludedDatabases"] = JsonSerializer.SerializeToNode(ParseCommaSeparated(_includedDbs)),
+            ["ExcludedDatabases"] = JsonSerializer.SerializeToNode(ParseCommaSeparated(_excludedDbs)),
+        });
+    }
+
+    private async Task SaveMonitoring()
+    {
+        await SaveSection("Monitoring", "Monitoring Intervals", new Dictionary<string, JsonNode?>
+        {
+            ["InstanceProbeIntervalSeconds"] = JsonValue.Create(_instanceProbe),
+            ["LatencyIntervalSeconds"] = JsonValue.Create(_latencyInterval),
+            ["LongRunningQueryIntervalSeconds"] = JsonValue.Create(_lrqInterval),
+            ["FragmentationIntervalMinutes"] = JsonValue.Create(_fragInterval),
+            ["ErrorLogIntervalSeconds"] = JsonValue.Create(_errorLogInterval),
+        });
+    }
+
+    private async Task SaveLatency()
+    {
+        await SaveSection("Latency", "Latency Thresholds", new Dictionary<string, JsonNode?>
+        {
+            ["WarningMs"] = JsonValue.Create(_warningMs),
+            ["CriticalMs"] = JsonValue.Create(_criticalMs),
+            ["MovingAverageWindow"] = JsonValue.Create(_movingAvgWindow),
+        });
+    }
+
+    private async Task SaveSection(string sectionKey, string displayName, Dictionary<string, JsonNode?> fields)
+    {
+        _saved = null;
+        _saveError = null;
+        try
+        {
+            await ConfigWriter.PatchSectionAsync(sectionKey, fields);
+            _saved = displayName;
+            StateHasChanged();
+            await Task.Delay(3000);
+            _saved = null;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"Failed to save {displayName}: {ex.Message}";
+        }
+    }
+
+    private static List<string> ParseCommaSeparated(string value)
+        => string.IsNullOrWhiteSpace(value)
+            ? new List<string>()
+            : value.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
     private static string Masked(string s)
     {

@@ -232,6 +232,91 @@ public class ConfigWriterTests : IDisposable
         Assert.Equal(1, frag.GetProperty("MonitoredIndexes").GetArrayLength());
     }
 
+    [Fact]
+    public async Task PatchSectionAsync_UpdatesExistingFields()
+    {
+        WriteConfig("""
+        {
+          "SqlServer": {
+            "ConnectionString": "Server=old",
+            "ConnectionTimeoutSeconds": 10,
+            "CommandTimeoutSeconds": 30
+          }
+        }
+        """);
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.PatchSectionAsync("SqlServer", new Dictionary<string, System.Text.Json.Nodes.JsonNode?>
+        {
+            ["ConnectionTimeoutSeconds"] = System.Text.Json.Nodes.JsonValue.Create(20),
+            ["CommandTimeoutSeconds"] = System.Text.Json.Nodes.JsonValue.Create(60),
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        var sql = doc.RootElement.GetProperty("SqlServer");
+        Assert.Equal("Server=old", sql.GetProperty("ConnectionString").GetString());
+        Assert.Equal(20, sql.GetProperty("ConnectionTimeoutSeconds").GetInt32());
+        Assert.Equal(60, sql.GetProperty("CommandTimeoutSeconds").GetInt32());
+    }
+
+    [Fact]
+    public async Task PatchSectionAsync_CreatesSection_WhenMissing()
+    {
+        WriteConfig("{}");
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.PatchSectionAsync("Latency", new Dictionary<string, System.Text.Json.Nodes.JsonNode?>
+        {
+            ["WarningMs"] = System.Text.Json.Nodes.JsonValue.Create(300.0),
+            ["CriticalMs"] = System.Text.Json.Nodes.JsonValue.Create(1500.0),
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        var lat = doc.RootElement.GetProperty("Latency");
+        Assert.Equal(300.0, lat.GetProperty("WarningMs").GetDouble());
+        Assert.Equal(1500.0, lat.GetProperty("CriticalMs").GetDouble());
+    }
+
+    [Fact]
+    public async Task PatchSectionAsync_PreservesOtherSections()
+    {
+        WriteConfig("""
+        {
+          "Monitoring": { "InstanceProbeIntervalSeconds": 30, "LatencyIntervalSeconds": 30 },
+          "SqlServer": { "ConnectionString": "Server=test" }
+        }
+        """);
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.PatchSectionAsync("Monitoring", new Dictionary<string, System.Text.Json.Nodes.JsonNode?>
+        {
+            ["InstanceProbeIntervalSeconds"] = System.Text.Json.Nodes.JsonValue.Create(60),
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        Assert.Equal(60, doc.RootElement.GetProperty("Monitoring").GetProperty("InstanceProbeIntervalSeconds").GetInt32());
+        Assert.Equal(30, doc.RootElement.GetProperty("Monitoring").GetProperty("LatencyIntervalSeconds").GetInt32());
+        Assert.Equal("Server=test", doc.RootElement.GetProperty("SqlServer").GetProperty("ConnectionString").GetString());
+    }
+
+    [Fact]
+    public async Task PatchSectionAsync_CanWriteStringArrayField()
+    {
+        WriteConfig("""{"SqlServer":{"ExcludedDatabases":["tempdb"]}}""");
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.PatchSectionAsync("SqlServer", new Dictionary<string, System.Text.Json.Nodes.JsonNode?>
+        {
+            ["ExcludedDatabases"] = System.Text.Json.JsonSerializer.SerializeToNode(new[] { "tempdb", "model" }),
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        var arr = doc.RootElement.GetProperty("SqlServer").GetProperty("ExcludedDatabases");
+        Assert.Equal(2, arr.GetArrayLength());
+        Assert.Equal("tempdb", arr[0].GetString());
+        Assert.Equal("model", arr[1].GetString());
+    }
+
     public void Dispose()
     {
         try { Directory.Delete(_tempDir, true); } catch { /* ignore */ }
