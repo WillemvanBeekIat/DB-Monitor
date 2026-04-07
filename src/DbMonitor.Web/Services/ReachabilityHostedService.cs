@@ -13,18 +13,18 @@ public class ReachabilityHostedService : MonitoringHostedService
 {
     private readonly IReachabilityMonitor _monitor;
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly MonitoringOptions _options;
+    private readonly IOptionsMonitor<MonitoringOptions> _options;
 
     public ReachabilityHostedService(
         IReachabilityMonitor monitor,
         IServiceScopeFactory scopeFactory,
-        IOptions<MonitoringOptions> options,
+        IOptionsMonitor<MonitoringOptions> options,
         ILogger<ReachabilityHostedService> logger)
         : base("ReachabilityMonitor", logger)
     {
         _monitor = monitor;
         _scopeFactory = scopeFactory;
-        _options = options.Value;
+        _options = options;
     }
 
     protected override async Task RunIterationAsync(CancellationToken ct)
@@ -39,5 +39,5 @@ public class ReachabilityHostedService : MonitoringHostedService
     }
 
     protected override Task DelayAsync(CancellationToken ct) =>
-        Task.Delay(TimeSpan.FromSeconds(_options.InstanceProbeIntervalSeconds), ct);
+        Task.Delay(TimeSpan.FromSeconds(_options.CurrentValue.InstanceProbeIntervalSeconds), ct);
 }

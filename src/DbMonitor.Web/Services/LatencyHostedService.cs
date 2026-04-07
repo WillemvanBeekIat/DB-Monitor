@@ -11,16 +11,16 @@ namespace DbMonitor.Web.Services;
 public class LatencyHostedService : MonitoringHostedService
 {
     private readonly ILatencyMonitor _monitor;
-    private readonly MonitoringOptions _options;
+    private readonly IOptionsMonitor<MonitoringOptions> _options;
 
     public LatencyHostedService(
         ILatencyMonitor monitor,
-        IOptions<MonitoringOptions> options,
+        IOptionsMonitor<MonitoringOptions> options,
         ILogger<LatencyHostedService> logger)
         : base("LatencyMonitor", logger)
     {
         _monitor = monitor;
-        _options = options.Value;
+        _options = options;
     }
 
     protected override async Task RunIterationAsync(CancellationToken ct)
@@ -31,5 +31,5 @@ public class LatencyHostedService : MonitoringHostedService
     }
 
     protected override Task DelayAsync(CancellationToken ct) =>
-        Task.Delay(TimeSpan.FromSeconds(_options.LatencyIntervalSeconds), ct);
+        Task.Delay(TimeSpan.FromSeconds(_options.CurrentValue.LatencyIntervalSeconds), ct);
 }

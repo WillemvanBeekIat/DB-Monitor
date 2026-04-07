@@ -508,31 +508,63 @@ tr:hover td { background: rgba(0, 212, 255, 0.03); }
 /* ---------- Dialog / Modal ---------- */
 .modal-backdrop {
     position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.75);
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 9999;
+}
+
+.modal-backdrop::before {
+    content: '';
+    position: absolute;
+    inset: 0;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+    z-index: -1;
 }
 
 .modal {
-    background: rgba(8, 13, 30, 0.95);
-    border: 1px solid var(--border-glow);
+    background: #0a1628;
+    border: 2px solid var(--accent);
     border-radius: 16px;
     padding: 28px;
     max-width: 480px;
     width: 90%;
-    box-shadow: 0 0 60px rgba(0, 212, 255, 0.1), 0 24px 48px rgba(0,0,0,0.8);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 0 80px rgba(0, 212, 255, 0.3), 0 25px 50px rgba(0, 0, 0, 0.95);
+    position: relative;
+    z-index: 10000;
+    color: var(--text);
 }
 
-.modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; color: var(--accent); font-family: 'JetBrains Mono', monospace; }
-.modal p { color: var(--text-muted); margin-bottom: 20px; line-height: 1.7; }
-.modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+.modal h3 { 
+    font-size: 18px; 
+    font-weight: 700; 
+    margin-bottom: 16px; 
+    color: var(--accent); 
+    font-family: 'JetBrains Mono', monospace; 
+}
+
+.modal p { 
+    color: #e0f2fe; 
+    margin-bottom: 24px; 
+    line-height: 1.7; 
+    font-size: 14px;
+}
+
+.modal p strong {
+    color: var(--accent);
+}
+
+.modal-actions { 
+    display: flex; 
+    gap: 12px; 
+    justify-content: flex-end; 
+}
 
 /* ---------- Forms ---------- */
 input, select, textarea {
@@ -611,6 +643,16 @@ input:focus, select:focus, textarea:focus {
     animation: spin 0.7s linear infinite;
     display: inline-block;
     box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+}
+
+.spinner-small {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(0, 212, 255, 0.15);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+    box-shadow: 0 0 6px rgba(0, 212, 255, 0.3);
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }

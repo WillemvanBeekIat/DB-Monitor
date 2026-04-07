@@ -14,30 +14,31 @@ public class LongRunningQueryHostedService : MonitoringHostedService
 {
     private readonly ILongRunningQueryMonitor _monitor;
     private readonly IActionExecutor _executor;
-    private readonly LongRunningQueryOptions _options;
-    private readonly MonitoringOptions _monOptions;
+    private readonly IOptionsMonitor<LongRunningQueryOptions> _options;
+    private readonly IOptionsMonitor<MonitoringOptions> _monOptions;
 
     public LongRunningQueryHostedService(
         ILongRunningQueryMonitor monitor,
         IActionExecutor executor,
-        IOptions<LongRunningQueryOptions> options,
-        IOptions<MonitoringOptions> monOptions,
+        IOptionsMonitor<LongRunningQueryOptions> options,
+        IOptionsMonitor<MonitoringOptions> monOptions,
         ILogger<LongRunningQueryHostedService> logger)
         : base("LongRunningQueryMonitor", logger)
     {
         _monitor = monitor;
         _executor = executor;
-        _options = options.Value;
-        _monOptions = monOptions.Value;
+        _options = options;
+        _monOptions = monOptions;
     }
 
     protected override async Task RunIterationAsync(CancellationToken ct)
     {
         var queries = await _monitor.GetLongRunningQueriesAsync(ct);
 
+        var opts = _options.CurrentValue;
         Logger.LogInformation("Long-running queries: {Count} detected", queries.Count);
 
-        if (_options.Enabled && _options.KillEnabled)
+        if (opts.Enabled && opts.KillEnabled)
         {
             foreach (var query in queries.Where(q => q.WouldBeKilled))
             {
@@ -47,5 +48,5 @@ public class LongRunningQueryHostedService : MonitoringHostedService
     }
 
     protected override Task DelayAsync(CancellationToken ct) =>
-        Task.Delay(TimeSpan.FromSeconds(_monOptions.LongRunningQueryIntervalSeconds), ct);
+        Task.Delay(TimeSpan.FromSeconds(_monOptions.CurrentValue.LongRunningQueryIntervalSeconds), ct);
 }

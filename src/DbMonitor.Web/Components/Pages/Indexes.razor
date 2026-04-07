@@ -65,7 +65,11 @@
                             <td>@idx.PageCount.ToString("N0")</td>
                             <td>@idx.UsageScore.ToString("F1")</td>
                             <td>
-                                @if (idx.IsEligible)
+                                @if (IsReorganizing(idx))
+                                {
+                                    <span class="badge badge-info">Reorganizing...</span>
+                                }
+                                else if (idx.IsEligible)
                                 {
                                     <span class="badge badge-warning">Actionable</span>
                                 }
@@ -75,9 +79,19 @@
                                 }
                             </td>
                             <td>
-                                <button class="btn btn-success btn-sm" @onclick="() => ConfirmReorganize(idx)">
-                                    🔧 Reorganize
-                                </button>
+                                @if (IsReorganizing(idx))
+                                {
+                                    <div style="display:flex;align-items:center;gap:8px;">
+                                        <div class="spinner-small"></div>
+                                        <span style="color:var(--accent);font-size:12px;">Reorganizing...</span>
+                                    </div>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-success btn-sm" @onclick="() => ConfirmReorganize(idx)">
+                                        🔧 Reorganize
+                                    </button>
+                                }
                             </td>
                         </tr>
                     }
@@ -89,17 +103,17 @@
 
 @if (_reorganizeTarget != null)
 {
-    <div class="modal-backdrop" @onclick="() => _reorganizeTarget = null">
-        <div class="modal" @onclick:stopPropagation>
-            <h3>🔧 Confirm Reorganize Index</h3>
-            <p>
-                Reorganize index <strong>@_reorganizeTarget.IndexName</strong>
-                on <strong>@($"{_reorganizeTarget.Database}.{_reorganizeTarget.Schema}.{_reorganizeTarget.Table}")</strong>?<br />
+    <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);display:flex;align-items:center;justify-content:center;z-index:99999;">
+        <div style="background:#0f172a;border:2px solid #00d4ff;border-radius:16px;padding:32px;max-width:500px;width:90%;color:#e0f2fe;box-shadow:0 0 60px rgba(0,212,255,0.4);" @onclick:stopPropagation="true">
+            <h3 style="font-size:18px;font-weight:700;margin-bottom:16px;color:#00d4ff;">🔧 Confirm Reorganize Index</h3>
+            <p style="margin-bottom:24px;line-height:1.7;">
+                Reorganize index <strong style="color:#00d4ff;">@_reorganizeTarget.IndexName</strong>
+                on <strong style="color:#00d4ff;">@($"{_reorganizeTarget.Database}.{_reorganizeTarget.Schema}.{_reorganizeTarget.Table}")</strong>?<br />
                 Fragmentation: @_reorganizeTarget.FragmentationPercent.ToString("F1")%
                 &middot; Pages: @_reorganizeTarget.PageCount.ToString("N0")
             </p>
-            <div class="modal-actions">
-                <button class="btn btn-secondary" @onclick="() => _reorganizeTarget = null">Cancel</button>
+            <div style="display:flex;gap:12px;justify-content:flex-end;">
+                <button class="btn btn-secondary" @onclick="CloseModal">Cancel</button>
                 <button class="btn btn-success" @onclick="ExecuteReorganize">🔧 Reorganize</button>
             </div>
         </div>
@@ -110,6 +124,7 @@
     private IReadOnlyList<IndexInfo> _indexes = Array.Empty<IndexInfo>();
     private bool _loading = false;
     private IndexInfo? _reorganizeTarget;
+    private IndexInfo? _reorganizingIndex;
     private string? _reorgError;
 
     protected override async Task OnInitializedAsync() => await RefreshAsync();
@@ -123,18 +138,38 @@
         _loading = false;
     }
 
-    private void ConfirmReorganize(IndexInfo idx) { _reorganizeTarget = idx; _reorgError = null; }
+    private void ConfirmReorganize(IndexInfo idx)
+    {
+        _reorganizeTarget = idx;
+        _reorgError = null;
+        StateHasChanged();
+    }
+
+    private void CloseModal()
+    {
+        _reorganizeTarget = null;
+        StateHasChanged();
+    }
+
+    private void StopPropagation() { /* Prevents click from bubbling to backdrop */ }
+
+    private bool IsReorganizing(IndexInfo idx) =>
+        _reorganizingIndex != null &&
+        _reorganizingIndex.Database == idx.Database &&
+        _reorganizingIndex.Schema == idx.Schema &&
+        _reorganizingIndex.Table == idx.Table &&
+        _reorganizingIndex.IndexName == idx.IndexName;
 
     private async Task ExecuteReorganize()
     {
         if (_reorganizeTarget == null) return;
         var target = _reorganizeTarget;
-        _reorganizeTarget = null;   // Dismiss the modal immediately so the backdrop is removed
-        _loading = true;
-        StateHasChanged();          // Re-render now: modal gone, loading spinner shown
+        _reorganizeTarget = null;   // Dismiss the modal immediately
+        _reorganizingIndex = target; // Track which index is being reorganized
+        _reorgError = null;
+        StateHasChanged();          // Re-render now: modal gone, reorganizing state shown
         try
         {
-            _reorgError = null;
             await ActionExecutor.ReorganizeIndexAsync(target, ActionTrigger.Manual, manualOverride: true);
             await State.RefreshAsync();
             _indexes = State.LastIndexes;
@@ -145,7 +180,7 @@
         }
         finally
         {
-            _loading = false;
+            _reorganizingIndex = null;
         }
     }
 

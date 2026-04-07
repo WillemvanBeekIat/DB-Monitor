@@ -1,14 +1,16 @@
 @page "/settings"
 @rendermode InteractiveServer
-@inject IOptions<SqlServerOptions> SqlOpts
-@inject IOptions<MonitoringOptions> MonOpts
-@inject IOptions<FragmentationOptions> FragOpts
-@inject IOptions<LongRunningQueryOptions> LrqOpts
-@inject IOptions<LatencyOptions> LatOpts
+@inject IOptionsMonitor<SqlServerOptions> SqlOpts
+@inject IOptionsMonitor<MonitoringOptions> MonOpts
+@inject IOptionsMonitor<FragmentationOptions> FragOpts
+@inject IOptionsMonitor<LongRunningQueryOptions> LrqOpts
+@inject IOptionsMonitor<LatencyOptions> LatOpts
 @inject IConfigWriter ConfigWriter
-@inject IOptions<ConfigMutationOptions> MutationOpts
+@inject IOptionsMonitor<ConfigMutationOptions> MutationOpts
 @using System.Text.Json
 @using System.Text.Json.Nodes
+@using Microsoft.Extensions.Options
+@implements IDisposable
 
 <PageTitle>Settings – DB Monitor</PageTitle>
 
@@ -64,7 +66,7 @@
             }
             else
             {
-                <span class="setting-value">@Masked(SqlOpts.Value.ConnectionString)</span>
+                <span class="setting-value">@Masked(SqlOpts.CurrentValue.ConnectionString)</span>
             }
         </div>
         <div class="setting-row">
@@ -78,7 +80,7 @@
             }
             else
             {
-                <span class="setting-value">@SqlOpts.Value.ConnectionTimeoutSeconds s</span>
+                <span class="setting-value">@SqlOpts.CurrentValue.ConnectionTimeoutSeconds s</span>
             }
         </div>
         <div class="setting-row">
@@ -92,7 +94,7 @@
             }
             else
             {
-                <span class="setting-value">@SqlOpts.Value.CommandTimeoutSeconds s</span>
+                <span class="setting-value">@SqlOpts.CurrentValue.CommandTimeoutSeconds s</span>
             }
         </div>
         <div class="setting-row">
@@ -103,7 +105,7 @@
             }
             else
             {
-                <span class="setting-value">@(SqlOpts.Value.IncludedDatabases.Count == 0 ? "All" : string.Join(", ", SqlOpts.Value.IncludedDatabases))</span>
+                <span class="setting-value">@(SqlOpts.CurrentValue.IncludedDatabases.Count == 0 ? "All" : string.Join(", ", SqlOpts.CurrentValue.IncludedDatabases))</span>
             }
         </div>
         <div class="setting-row">
@@ -114,7 +116,7 @@
             }
             else
             {
-                <span class="setting-value">@string.Join(", ", SqlOpts.Value.ExcludedDatabases)</span>
+                <span class="setting-value">@string.Join(", ", SqlOpts.CurrentValue.ExcludedDatabases)</span>
             }
         </div>
         @if (CanWriteSettings)
@@ -138,7 +140,7 @@
             }
             else
             {
-                <span class="setting-value">@MonOpts.Value.InstanceProbeIntervalSeconds s</span>
+                <span class="setting-value">@MonOpts.CurrentValue.InstanceProbeIntervalSeconds s</span>
             }
         </div>
         <div class="setting-row">
@@ -152,7 +154,7 @@
             }
             else
             {
-                <span class="setting-value">@MonOpts.Value.LatencyIntervalSeconds s</span>
+                <span class="setting-value">@MonOpts.CurrentValue.LatencyIntervalSeconds s</span>
             }
         </div>
         <div class="setting-row">
@@ -166,7 +168,7 @@
             }
             else
             {
-                <span class="setting-value">@MonOpts.Value.LongRunningQueryIntervalSeconds s</span>
+                <span class="setting-value">@MonOpts.CurrentValue.LongRunningQueryIntervalSeconds s</span>
             }
         </div>
         <div class="setting-row">
@@ -180,7 +182,7 @@
             }
             else
             {
-                <span class="setting-value">@MonOpts.Value.FragmentationIntervalMinutes min</span>
+                <span class="setting-value">@MonOpts.CurrentValue.FragmentationIntervalMinutes min</span>
             }
         </div>
         <div class="setting-row">
@@ -194,7 +196,7 @@
             }
             else
             {
-                <span class="setting-value">@MonOpts.Value.ErrorLogIntervalSeconds s</span>
+                <span class="setting-value">@MonOpts.CurrentValue.ErrorLogIntervalSeconds s</span>
             }
         </div>
         @if (CanWriteSettings)
@@ -218,7 +220,7 @@
             }
             else
             {
-                <span class="setting-value">@LatOpts.Value.WarningMs ms</span>
+                <span class="setting-value">@LatOpts.CurrentValue.WarningMs ms</span>
             }
         </div>
         <div class="setting-row">
@@ -232,7 +234,7 @@
             }
             else
             {
-                <span class="setting-value">@LatOpts.Value.CriticalMs ms</span>
+                <span class="setting-value">@LatOpts.CurrentValue.CriticalMs ms</span>
             }
         </div>
         <div class="setting-row">
@@ -246,7 +248,7 @@
             }
             else
             {
-                <span class="setting-value">@LatOpts.Value.MovingAverageWindow readings</span>
+                <span class="setting-value">@LatOpts.CurrentValue.MovingAverageWindow readings</span>
             }
         </div>
         @if (CanWriteSettings)
@@ -258,8 +260,8 @@
     </div>
 
     <div class="settings-section">
-        <h3>Monitored Indexes (@FragOpts.Value.MonitoredIndexes.Count configured)</h3>
-        @foreach (var idx in FragOpts.Value.MonitoredIndexes)
+        <h3>Monitored Indexes (@FragOpts.CurrentValue.MonitoredIndexes.Count configured)</h3>
+        @foreach (var idx in FragOpts.CurrentValue.MonitoredIndexes)
         {
             <div class="setting-row">
                 <span class="setting-key">@($"{idx.Database}.{idx.Schema}.{idx.Table}.{idx.Index}")</span>
@@ -298,29 +300,57 @@
     private double _criticalMs;
     private int _movingAvgWindow;
 
-    private bool CanWrite => MutationOpts.Value.AllowDryRunToggleWriteback;
-    private bool CanWriteSettings => MutationOpts.Value.AllowSettingsWriteback;
+    // Change listeners for config reload
+    private IDisposable? _sqlOptsListener;
+    private IDisposable? _monOptsListener;
+    private IDisposable? _fragOptsListener;
+    private IDisposable? _lrqOptsListener;
+    private IDisposable? _latOptsListener;
+
+    private bool CanWrite => MutationOpts.CurrentValue.AllowDryRunToggleWriteback;
+    private bool CanWriteSettings => MutationOpts.CurrentValue.AllowSettingsWriteback;
 
     protected override void OnInitialized()
     {
-        _fragDryRun = FragOpts.Value.DryRun;
-        _lrqDryRun = LrqOpts.Value.DryRun;
+        LoadCurrentValues();
 
-        _connString = SqlOpts.Value.ConnectionString;
-        _connTimeout = SqlOpts.Value.ConnectionTimeoutSeconds;
-        _cmdTimeout = SqlOpts.Value.CommandTimeoutSeconds;
-        _includedDbs = string.Join(", ", SqlOpts.Value.IncludedDatabases);
-        _excludedDbs = string.Join(", ", SqlOpts.Value.ExcludedDatabases);
+        // Register change listeners to refresh UI when config changes
+        _sqlOptsListener = SqlOpts.OnChange(_ => InvokeAsync(() => { LoadCurrentValues(); StateHasChanged(); }));
+        _monOptsListener = MonOpts.OnChange(_ => InvokeAsync(() => { LoadCurrentValues(); StateHasChanged(); }));
+        _fragOptsListener = FragOpts.OnChange(_ => InvokeAsync(() => { LoadCurrentValues(); StateHasChanged(); }));
+        _lrqOptsListener = LrqOpts.OnChange(_ => InvokeAsync(() => { LoadCurrentValues(); StateHasChanged(); }));
+        _latOptsListener = LatOpts.OnChange(_ => InvokeAsync(() => { LoadCurrentValues(); StateHasChanged(); }));
+    }
 
-        _instanceProbe = MonOpts.Value.InstanceProbeIntervalSeconds;
-        _latencyInterval = MonOpts.Value.LatencyIntervalSeconds;
-        _lrqInterval = MonOpts.Value.LongRunningQueryIntervalSeconds;
-        _fragInterval = MonOpts.Value.FragmentationIntervalMinutes;
-        _errorLogInterval = MonOpts.Value.ErrorLogIntervalSeconds;
+    private void LoadCurrentValues()
+    {
+        _fragDryRun = FragOpts.CurrentValue.DryRun;
+        _lrqDryRun = LrqOpts.CurrentValue.DryRun;
 
-        _warningMs = LatOpts.Value.WarningMs;
-        _criticalMs = LatOpts.Value.CriticalMs;
-        _movingAvgWindow = LatOpts.Value.MovingAverageWindow;
+        _connString = SqlOpts.CurrentValue.ConnectionString;
+        _connTimeout = SqlOpts.CurrentValue.ConnectionTimeoutSeconds;
+        _cmdTimeout = SqlOpts.CurrentValue.CommandTimeoutSeconds;
+        _includedDbs = string.Join(", ", SqlOpts.CurrentValue.IncludedDatabases);
+        _excludedDbs = string.Join(", ", SqlOpts.CurrentValue.ExcludedDatabases);
+
+        _instanceProbe = MonOpts.CurrentValue.InstanceProbeIntervalSeconds;
+        _latencyInterval = MonOpts.CurrentValue.LatencyIntervalSeconds;
+        _lrqInterval = MonOpts.CurrentValue.LongRunningQueryIntervalSeconds;
+        _fragInterval = MonOpts.CurrentValue.FragmentationIntervalMinutes;
+        _errorLogInterval = MonOpts.CurrentValue.ErrorLogIntervalSeconds;
+
+        _warningMs = LatOpts.CurrentValue.WarningMs;
+        _criticalMs = LatOpts.CurrentValue.CriticalMs;
+        _movingAvgWindow = LatOpts.CurrentValue.MovingAverageWindow;
+    }
+
+    public void Dispose()
+    {
+        _sqlOptsListener?.Dispose();
+        _monOptsListener?.Dispose();
+        _fragOptsListener?.Dispose();
+        _lrqOptsListener?.Dispose();
+        _latOptsListener?.Dispose();
     }
 
     private Task OnFragDryRunChanged(ChangeEventArgs e) => ToggleDryRun(e, "Fragmentation");

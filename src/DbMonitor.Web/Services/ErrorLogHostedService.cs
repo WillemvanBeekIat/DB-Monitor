@@ -11,16 +11,16 @@ namespace DbMonitor.Web.Services;
 public class ErrorLogHostedService : MonitoringHostedService
 {
     private readonly IErrorLogMonitor _monitor;
-    private readonly MonitoringOptions _options;
+    private readonly IOptionsMonitor<MonitoringOptions> _options;
 
     public ErrorLogHostedService(
         IErrorLogMonitor monitor,
-        IOptions<MonitoringOptions> options,
+        IOptionsMonitor<MonitoringOptions> options,
         ILogger<ErrorLogHostedService> logger)
         : base("ErrorLogMonitor", logger)
     {
         _monitor = monitor;
-        _options = options.Value;
+        _options = options;
     }
 
     protected override async Task RunIterationAsync(CancellationToken ct)
@@ -31,5 +31,5 @@ public class ErrorLogHostedService : MonitoringHostedService
     }
 
     protected override Task DelayAsync(CancellationToken ct) =>
-        Task.Delay(TimeSpan.FromSeconds(_options.ErrorLogIntervalSeconds), ct);
+        Task.Delay(TimeSpan.FromSeconds(_options.CurrentValue.ErrorLogIntervalSeconds), ct);
 }
