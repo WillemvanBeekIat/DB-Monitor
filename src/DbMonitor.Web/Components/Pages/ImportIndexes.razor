@@ -273,7 +273,7 @@
     private void ToggleHideMonitored(ChangeEventArgs e)
     {
         _hideAlreadyMonitored = (bool)(e.Value ?? false);
-        // Remove deselect any now-hidden rows
+        // Deselect any now-hidden rows
         foreach (var idx in _indexes.Where(i => i.AlreadyMonitored))
             _selectedKeys.Remove(Key(idx));
     }
