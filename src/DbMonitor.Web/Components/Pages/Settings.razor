@@ -1,0 +1,154 @@
+@page "/settings"
+@rendermode InteractiveServer
+@inject IOptions<SqlServerOptions> SqlOpts
+@inject IOptions<MonitoringOptions> MonOpts
+@inject IOptions<FragmentationOptions> FragOpts
+@inject IOptions<LongRunningQueryOptions> LrqOpts
+@inject IOptions<LatencyOptions> LatOpts
+@inject IConfigWriter ConfigWriter
+@inject IOptions<ConfigMutationOptions> MutationOpts
+
+<PageTitle>Settings – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <h1 class="page-title">Settings</h1>
+
+    @if (_saved)
+    {
+        <div class="alert alert-success" style="margin-bottom:16px">✅ Settings saved successfully</div>
+    }
+    @if (_saveError != null)
+    {
+        <div class="alert alert-critical" style="margin-bottom:16px">@_saveError</div>
+    }
+
+    <div class="card" style="margin-bottom:20px">
+        <h3 style="font-size:15px;font-weight:700;margin-bottom:16px">Actions</h3>
+        <div class="setting-row">
+            <div>
+                <div class="setting-key">Fragmentation Dry Run</div>
+                <div style="font-size:12px;color:var(--text-muted)">When enabled, no reorganize commands are executed</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <label class="toggle">
+                    <input type="checkbox" checked="@_fragDryRun" @onchange="OnFragDryRunChanged" disabled="@(!CanWrite)" />
+                    <span class="toggle-slider"></span>
+                </label>
+                <span style="font-size:13px;color:var(--text-muted)">@(_fragDryRun ? "Dry Run ON" : "Dry Run OFF")</span>
+            </div>
+        </div>
+        <div class="setting-row">
+            <div>
+                <div class="setting-key">Long-Running Query Dry Run</div>
+                <div style="font-size:12px;color:var(--text-muted)">When enabled, no KILL commands are executed</div>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+                <label class="toggle">
+                    <input type="checkbox" checked="@_lrqDryRun" @onchange="OnLrqDryRunChanged" disabled="@(!CanWrite)" />
+                    <span class="toggle-slider"></span>
+                </label>
+                <span style="font-size:13px;color:var(--text-muted)">@(_lrqDryRun ? "Dry Run ON" : "Dry Run OFF")</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section">
+        <h3>SQL Server</h3>
+        <div class="setting-row"><span class="setting-key">Connection String</span><span class="setting-value">@Masked(SqlOpts.Value.ConnectionString)</span></div>
+        <div class="setting-row"><span class="setting-key">Connection Timeout</span><span class="setting-value">@SqlOpts.Value.ConnectionTimeoutSeconds s</span></div>
+        <div class="setting-row"><span class="setting-key">Command Timeout</span><span class="setting-value">@SqlOpts.Value.CommandTimeoutSeconds s</span></div>
+        <div class="setting-row"><span class="setting-key">Included Databases</span><span class="setting-value">@(SqlOpts.Value.IncludedDatabases.Count == 0 ? "All" : string.Join(", ", SqlOpts.Value.IncludedDatabases))</span></div>
+        <div class="setting-row"><span class="setting-key">Excluded Databases</span><span class="setting-value">@string.Join(", ", SqlOpts.Value.ExcludedDatabases)</span></div>
+    </div>
+
+    <div class="settings-section">
+        <h3>Monitoring Intervals</h3>
+        <div class="setting-row"><span class="setting-key">Instance Probe</span><span class="setting-value">@MonOpts.Value.InstanceProbeIntervalSeconds s</span></div>
+        <div class="setting-row"><span class="setting-key">Latency</span><span class="setting-value">@MonOpts.Value.LatencyIntervalSeconds s</span></div>
+        <div class="setting-row"><span class="setting-key">Long-Running Queries</span><span class="setting-value">@MonOpts.Value.LongRunningQueryIntervalSeconds s</span></div>
+        <div class="setting-row"><span class="setting-key">Fragmentation</span><span class="setting-value">@MonOpts.Value.FragmentationIntervalMinutes min</span></div>
+        <div class="setting-row"><span class="setting-key">Error Log</span><span class="setting-value">@MonOpts.Value.ErrorLogIntervalSeconds s</span></div>
+    </div>
+
+    <div class="settings-section">
+        <h3>Latency Thresholds</h3>
+        <div class="setting-row"><span class="setting-key">Warning</span><span class="setting-value">@LatOpts.Value.WarningMs ms</span></div>
+        <div class="setting-row"><span class="setting-key">Critical</span><span class="setting-value">@LatOpts.Value.CriticalMs ms</span></div>
+        <div class="setting-row"><span class="setting-key">Moving Average Window</span><span class="setting-value">@LatOpts.Value.MovingAverageWindow readings</span></div>
+    </div>
+
+    <div class="settings-section">
+        <h3>Monitored Indexes (@FragOpts.Value.MonitoredIndexes.Count configured)</h3>
+        @foreach (var idx in FragOpts.Value.MonitoredIndexes)
+        {
+            <div class="setting-row">
+                <span class="setting-key">@($"{idx.Database}.{idx.Schema}.{idx.Table}.{idx.Index}")</span>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <span class="badge @(idx.Enabled ? "badge-healthy" : "badge-info")">@(idx.Enabled ? "Enabled" : "Disabled")</span>
+                    <span class="badge badge-info">@idx.FragmentationPercentThreshold%+ frag</span>
+                    @if (idx.AllowReorganize) { <span class="badge badge-info">REORG OK</span> }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private bool _fragDryRun;
+    private bool _lrqDryRun;
+    private bool _saved = false;
+    private string? _saveError;
+
+    private bool CanWrite => MutationOpts.Value.AllowDryRunToggleWriteback;
+
+    protected override void OnInitialized()
+    {
+        _fragDryRun = FragOpts.Value.DryRun;
+        _lrqDryRun = LrqOpts.Value.DryRun;
+    }
+
+    private Task OnFragDryRunChanged(ChangeEventArgs e) => ToggleDryRun(e, "Fragmentation");
+    private Task OnLrqDryRunChanged(ChangeEventArgs e) => ToggleDryRun(e, "LongRunningQueries");
+
+    private async Task ToggleDryRun(ChangeEventArgs e, string section)
+    {
+        if (!CanWrite) return;
+        _saved = false;
+        _saveError = null;
+
+        var newValue = (bool)(e.Value ?? false);
+        try
+        {
+            await ConfigWriter.SetDryRunAsync(section, newValue);
+
+            if (section == "Fragmentation") _fragDryRun = newValue;
+            else if (section == "LongRunningQueries") _lrqDryRun = newValue;
+
+            _saved = true;
+            await Task.Delay(3000);
+            _saved = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _saveError = $"Failed to save: {ex.Message}";
+        }
+    }
+
+    private static string Masked(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return "(not configured)";
+        var csb = new System.Data.Common.DbConnectionStringBuilder();
+        try
+        {
+            csb.ConnectionString = s;
+            if (csb.ContainsKey("Password")) csb["Password"] = "***";
+            if (csb.ContainsKey("PWD")) csb["PWD"] = "***";
+            return csb.ToString();
+        }
+        catch
+        {
+            return s.Length > 40 ? s[..40] + "..." : s;
+        }
+    }
+}

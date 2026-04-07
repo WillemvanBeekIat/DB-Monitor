@@ -1,0 +1,80 @@
+@page "/audit"
+@rendermode InteractiveServer
+@inject IAuditWriter AuditWriter
+
+<PageTitle>Audit Trail – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h1 class="page-title" style="margin-bottom:0">Audit Trail</h1>
+        <button class="btn btn-secondary btn-sm" @onclick="LoadAsync">&#8635; Refresh</button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
+    }
+    else if (!_entries.Any())
+    {
+        <div class="empty-state">
+            <span class="empty-icon">📋</span>
+            <p>No audit entries yet</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var e in _entries)
+        {
+            <div class="audit-entry">
+                <span class="audit-icon">@GetIcon(e.ActionType)</span>
+                <div class="audit-body">
+                    <div class="audit-title">@e.Target</div>
+                    <div style="font-size:13px;color:var(--text-muted);margin-bottom:6px">@e.Reason</div>
+                    @if (!string.IsNullOrEmpty(e.ErrorMessage))
+                    {
+                        <div class="alert alert-critical" style="padding:6px 10px;font-size:12px;margin-bottom:6px">@e.ErrorMessage</div>
+                    }
+                    <div class="audit-meta">
+                        <span>@e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC</span>
+                        <span class="badge @GetOutcomeBadge(e.Outcome)">@e.Outcome</span>
+                        <span class="badge @(e.Trigger == ActionTrigger.Manual ? "badge-warning" : "badge-info")">@e.Trigger</span>
+                        @if (e.IsDryRun) { <span class="badge badge-dry-run">DRY RUN</span> }
+                        @if (e.IsManualOverride) { <span class="badge badge-warning">Override</span> }
+                        @if (!string.IsNullOrEmpty(e.TriggeredBy)) { <span>by @e.TriggeredBy</span> }
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<AuditEntry> _entries = Array.Empty<AuditEntry>();
+    private bool _loading = false;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        _entries = await AuditWriter.GetRecentAsync(100);
+        _loading = false;
+    }
+
+    private static string GetIcon(ActionType t) => t switch
+    {
+        ActionType.ReorganizeIndex => "🔧",
+        ActionType.KillQuery => "🛑",
+        _ => "⚡"
+    };
+
+    private static string GetOutcomeBadge(ActionOutcome o) => o switch
+    {
+        ActionOutcome.Executed => "badge-healthy",
+        ActionOutcome.DryRun => "badge-dry-run",
+        ActionOutcome.Skipped => "badge-info",
+        ActionOutcome.Failed => "badge-critical",
+        _ => "badge-info"
+    };
+}

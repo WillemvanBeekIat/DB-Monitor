@@ -1,0 +1,89 @@
+@page "/errors"
+@rendermode InteractiveServer
+@inject MonitoringStateService State
+
+<PageTitle>SQL Server Errors – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h1 class="page-title" style="margin-bottom:0">SQL Server Errors</h1>
+        <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">&#8635; Refresh</button>
+    </div>
+
+    <div class="filter-bar">
+        <input @bind="_filter" @bind:event="oninput" placeholder="Filter messages..." />
+        <select @bind="_categoryFilter">
+            <option value="">All Categories</option>
+            @foreach (var c in Enum.GetNames<SqlErrorCategory>())
+            {
+                <option value="@c">@c</option>
+            }
+        </select>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div><p>Loading...</p></div>
+    }
+    else if (!Filtered.Any())
+    {
+        <div class="empty-state">
+            <span class="empty-icon">✅</span>
+            <p>No SQL Server errors detected</p>
+        </div>
+    }
+    else
+    {
+        @foreach (var e in Filtered.Take(100))
+        {
+            var levelClass = (e.Category == SqlErrorCategory.Severe || e.Category == SqlErrorCategory.Corruption)
+                ? "level-error" : "level-warning";
+            <div class="log-event @levelClass">
+                <div class="log-time">
+                    @e.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")
+                    &middot; <span class="badge @GetCategoryBadge(e.Category)">@e.Category</span>
+                    @if (e.ErrorNumber.HasValue) { <span style="margin-left:4px;font-size:11px">Error #@e.ErrorNumber</span> }
+                </div>
+                <div class="log-msg">@e.Message</div>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    private IReadOnlyList<SqlErrorEntry> _errors = Array.Empty<SqlErrorEntry>();
+    private bool _loading = false;
+    private string _filter = "";
+    private string _categoryFilter = "";
+
+    private IEnumerable<SqlErrorEntry> Filtered
+    {
+        get
+        {
+            var q = _errors.AsEnumerable();
+            if (!string.IsNullOrWhiteSpace(_filter))
+                q = q.Where(e => e.Message?.Contains(_filter, StringComparison.OrdinalIgnoreCase) ?? false);
+            if (!string.IsNullOrWhiteSpace(_categoryFilter) && Enum.TryParse<SqlErrorCategory>(_categoryFilter, out var cat))
+                q = q.Where(e => e.Category == cat);
+            return q.OrderByDescending(e => e.Timestamp);
+        }
+    }
+
+    protected override async Task OnInitializedAsync() => await RefreshAsync();
+
+    private async Task RefreshAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+        await State.RefreshAsync();
+        _errors = State.LastErrors;
+        _loading = false;
+    }
+
+    private static string GetCategoryBadge(SqlErrorCategory c) => c switch
+    {
+        SqlErrorCategory.Severe or SqlErrorCategory.Corruption => "badge-critical",
+        SqlErrorCategory.Deadlock or SqlErrorCategory.IO => "badge-warning",
+        _ => "badge-info"
+    };
+}
