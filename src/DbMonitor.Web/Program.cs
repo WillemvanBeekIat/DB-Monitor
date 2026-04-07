@@ -5,6 +5,7 @@ using DbMonitor.Infrastructure;
 using DbMonitor.SqlServer.Monitors;
 using DbMonitor.Web.Components;
 using DbMonitor.Web.Services;
+using ApexCharts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -67,6 +68,9 @@ builder.Services.AddHostedService<ErrorLogHostedService>();
 // Blazor
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// ApexCharts
+builder.Services.AddApexCharts();
 
 var app = builder.Build();
 

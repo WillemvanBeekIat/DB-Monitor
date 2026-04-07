@@ -6,40 +6,49 @@
 <PageTitle>Dashboard – DB Monitor</PageTitle>
 
 <div class="page-content">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <h1 class="page-title" style="margin-bottom:0">Dashboard</h1>
-        <div style="display:flex;align-items:center;gap:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div>
+            <h1 class="page-title" style="margin-bottom:2px">Dashboard</h1>
+            <div style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:0.06em">
+                REAL-TIME DATABASE TELEMETRY
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px">
             @if (_loading)
             {
-                <div class="spinner" style="width:20px;height:20px"></div>
+                <div class="spinner"></div>
             }
-            <span style="font-size:12px;color:var(--text-muted)">
-                @(State.LastRefresh == DateTimeOffset.MinValue ? "Never refreshed" : $"Updated {State.LastRefresh:HH:mm:ss}")
+            <span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">
+                @(State.LastRefresh == DateTimeOffset.MinValue ? "NEVER SYNCED" : $"SYNC {State.LastRefresh:HH:mm:ss}")
             </span>
-            <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">&#8635; Refresh</button>
+            <button class="btn btn-secondary btn-sm" @onclick="RefreshAsync">↻ Refresh</button>
         </div>
     </div>
 
     @if (State.LastSummary == null)
     {
         <div class="loading-state">
-            <div class="spinner"></div>
-            <p>Loading monitoring data...</p>
+            <div class="spinner" style="width:40px;height:40px;border-width:3px"></div>
+            <p style="font-family:'JetBrains Mono',monospace;letter-spacing:0.08em;font-size:13px">INITIALIZING TELEMETRY...</p>
         </div>
     }
     else
     {
         var s = State.LastSummary;
 
-        <div class="card" style="border-left: 4px solid @GetStatusColor(s.OverallStatus);margin-bottom:20px">
-            <div style="display:flex;align-items:center;gap:16px">
-                <span style="font-size:40px">@GetStatusIcon(s.OverallStatus)</span>
-                <div>
-                    <div style="font-size:20px;font-weight:700;color:@GetStatusColor(s.OverallStatus)">
-                        @s.OverallStatus
+        <div class="card" style="border-left: 3px solid @GetStatusColor(s.OverallStatus);margin-bottom:20px;padding:18px 22px">
+            <div style="display:flex;align-items:center;gap:18px">
+                <div style="position:relative">
+                    <div style="width:48px;height:48px;border-radius:50%;background:@GetStatusBg(s.OverallStatus);border:2px solid @GetStatusColor(s.OverallStatus);display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 20px @GetStatusColor(s.OverallStatus)40">
+                        @GetStatusIcon(s.OverallStatus)
                     </div>
-                    <div style="color:var(--text-muted);font-size:13px">
-                        Overall system health &middot; @s.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC
+                </div>
+                <div>
+                    <div style="font-size:22px;font-weight:700;color:@GetStatusColor(s.OverallStatus);font-family:'JetBrains Mono',monospace;letter-spacing:0.06em;text-shadow:0 0 16px @GetStatusColor(s.OverallStatus)60">
+                        @s.OverallStatus.ToString().ToUpper()
+                    </div>
+                    <div style="color:var(--text-muted);font-size:11px;font-family:'JetBrains Mono',monospace;letter-spacing:0.05em;margin-top:2px">
+                        SYSTEM STATUS &nbsp;·&nbsp; @s.Timestamp.ToString("yyyy-MM-dd HH:mm:ss") UTC
                     </div>
                     @if (s.IsDryRunEnabled)
                     {
@@ -52,15 +61,22 @@
         <div class="card-grid">
             <div class="stat-card">
                 <span class="label">Instance</span>
-                <span class="value @GetStatusClass(s.InstanceHealth?.IsReachable == true ? HealthStatus.Healthy : HealthStatus.Critical)">
-                    @(s.InstanceHealth?.IsReachable == true ? "Online" : "Offline")
+                <span class="value @GetStatusClass(s.InstanceHealth?.IsReachable == true ? HealthStatus.Healthy : HealthStatus.Critical)" @key=@("instance_" + _renderKey)>
+                    @(s.InstanceHealth?.IsReachable == true ? "ONLINE" : "OFFLINE")
                 </span>
-                <span class="sub">@(s.InstanceHealth?.ProbeQueryMs.HasValue == true ? $"Probe: {s.InstanceHealth.ProbeQueryMs:F0}ms" : "")</span>
+                <span class="sub">@(s.InstanceHealth?.ProbeQueryMs.HasValue == true ? $"{s.InstanceHealth.ProbeQueryMs:F0}ms probe" : "no data")</span>
+                @if (s.RecentLatency.Count > 2)
+                {
+                    <svg class="stat-sparkline" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none">
+                        <polyline fill="none" stroke="@GetStatusColor(s.InstanceHealth?.IsReachable == true ? HealthStatus.Healthy : HealthStatus.Critical)" stroke-width="1.5"
+                                  points="@BuildSparklinePoints(s.RecentLatency)" />
+                    </svg>
+                }
             </div>
 
             <div class="stat-card">
                 <span class="label">Databases</span>
-                <span class="value">@(s.InstanceHealth?.Databases.Count ?? 0)</span>
+                <span class="value" @key=@("db_" + _renderKey)>@(s.InstanceHealth?.Databases.Count ?? 0)</span>
                 <span class="sub @(s.InstanceHealth?.Databases.Any(d => !d.IsOnline) == true ? "status-warning" : "")">
                     @(s.InstanceHealth?.Databases.Count(d => d.IsOnline) ?? 0) online
                 </span>
@@ -68,19 +84,19 @@
 
             <div class="stat-card">
                 <span class="label">Long Queries</span>
-                <span class="value @(s.LongRunningQueryCount > 0 ? "status-warning" : "")">@s.LongRunningQueryCount</span>
+                <span class="value @(s.LongRunningQueryCount > 0 ? "status-warning" : "status-healthy")" @key=@("lq_" + _renderKey)>@s.LongRunningQueryCount</span>
                 <span class="sub">above threshold</span>
             </div>
 
             <div class="stat-card">
-                <span class="label">Fragmented Indexes</span>
-                <span class="value @(s.ActionableFragmentedIndexCount > 0 ? "status-warning" : "")">@s.ActionableFragmentedIndexCount</span>
+                <span class="label">Frag. Indexes</span>
+                <span class="value @(s.ActionableFragmentedIndexCount > 0 ? "status-warning" : "")" @key=@("fi_" + _renderKey)>@s.ActionableFragmentedIndexCount</span>
                 <span class="sub">actionable</span>
             </div>
 
             <div class="stat-card">
                 <span class="label">SQL Errors</span>
-                <span class="value @(s.InternalErrorCount > 0 ? "status-critical" : "")">@s.InternalErrorCount</span>
+                <span class="value @(s.InternalErrorCount > 0 ? "status-critical" : "")" @key=@("err_" + _renderKey)>@s.InternalErrorCount</span>
                 <span class="sub">recent entries</span>
             </div>
 
@@ -89,8 +105,21 @@
                 var latest = s.RecentLatency[^1];
                 <div class="stat-card">
                     <span class="label">Latency</span>
-                    <span class="value @GetStatusClass(latest.Status)">@latest.ProbeQueryMs.ToString("F0")ms</span>
+                    <span class="value @GetStatusClass(latest.Status)" @key=@("lat_" + _renderKey)>@latest.ProbeQueryMs.ToString("F0")<span style="font-size:16px;font-weight:400">ms</span></span>
                     <span class="sub">probe query</span>
+                    @if (s.RecentLatency.Count > 2)
+                    {
+                        <svg class="stat-sparkline" viewBox="0 0 80 24" width="80" height="24" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="latSparkGrad" x1="0" y1="0" x2="1" y2="0">
+                                    <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.4"/>
+                                    <stop offset="100%" stop-color="var(--healthy)" stop-opacity="1"/>
+                                </linearGradient>
+                            </defs>
+                            <polyline fill="none" stroke="url(#latSparkGrad)" stroke-width="1.5"
+                                      points="@BuildSparklinePoints(s.RecentLatency)" />
+                        </svg>
+                    }
                 </div>
             }
         </div>
@@ -98,17 +127,23 @@
         @if (s.RecentLatency.Count > 1)
         {
             <div class="card">
-                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px;color:var(--text-muted)">Latency (last @s.RecentLatency.Count readings)</h3>
-                <div class="chart-container" style="height:80px">
-                    @{
-                        var maxMs = s.RecentLatency.Max(l => l.ProbeQueryMs);
-                        foreach (var lat in s.RecentLatency)
-                        {
-                            var pct = maxMs > 0 ? (lat.ProbeQueryMs / maxMs * 100) : 10;
-                            var cls = lat.Status == HealthStatus.Critical ? "critical" : lat.Status == HealthStatus.Warning ? "warning" : "healthy";
-                            <div class="chart-bar @cls" style="height:@(pct)%" title="@lat.ProbeQueryMs.ToString("F0")ms @lat.Timestamp.ToString("HH:mm:ss")"></div>
-                        }
-                    }
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+                    <h3 style="font-size:12px;font-weight:700;color:var(--accent);font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;text-transform:uppercase">
+                        ◈ LATENCY TELEMETRY
+                    </h3>
+                    <span style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace">
+                        @s.RecentLatency.Count READINGS
+                    </span>
+                </div>
+                <div class="chart-container" style="height:120px">
+                    <ApexChart TItem="LatencySnapshot" Options="_chartOptions" Height="120">
+                        <ApexPointSeries TItem="LatencySnapshot"
+                                         Items="s.RecentLatency"
+                                         Name="Latency (ms)"
+                                         XValue="@(e => e.Timestamp.ToString("HH:mm:ss"))"
+                                         YValue="@(e => (decimal)e.ProbeQueryMs)"
+                                         SeriesType="SeriesType.Area" />
+                    </ApexChart>
                 </div>
             </div>
         }
@@ -116,7 +151,9 @@
         @if (s.InstanceHealth?.Databases.Count > 0)
         {
             <div class="card">
-                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Databases</h3>
+                <h3 style="font-size:12px;font-weight:700;margin-bottom:16px;color:var(--accent);font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;text-transform:uppercase">
+                    ◈ DATABASE NODES
+                </h3>
                 <div class="table-wrapper">
                     <table>
                         <thead>
@@ -126,9 +163,9 @@
                             @foreach (var db in s.InstanceHealth.Databases)
                             {
                                 <tr>
-                                    <td>@db.DatabaseName</td>
+                                    <td style="font-family:'JetBrains Mono',monospace;font-weight:600;font-size:12px">@db.DatabaseName</td>
                                     <td><span class="badge @(db.IsOnline ? "badge-healthy" : "badge-critical")">@db.State</span></td>
-                                    <td>@(db.IsReachable ? "✅" : "❌")</td>
+                                    <td style="font-size:13px">@(db.IsReachable ? "✓" : "✗")</td>
                                 </tr>
                             }
                         </tbody>
@@ -140,14 +177,16 @@
         @if (s.RecentActions.Count > 0)
         {
             <div class="card">
-                <h3 style="font-size:15px;font-weight:700;margin-bottom:12px">Recent Actions</h3>
+                <h3 style="font-size:12px;font-weight:700;margin-bottom:16px;color:var(--accent);font-family:'JetBrains Mono',monospace;letter-spacing:0.1em;text-transform:uppercase">
+                    ◈ RECENT ACTIONS
+                </h3>
                 @foreach (var a in s.RecentActions.Take(5))
                 {
                     <div class="audit-entry">
                         <span class="audit-icon">@GetActionIcon(a.ActionType)</span>
                         <div class="audit-body">
                             <div class="audit-title">@a.Target</div>
-                            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">@a.Reason</div>
+                            <div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">@a.Reason</div>
                             <div class="audit-meta">
                                 <span>@a.Timestamp.ToString("HH:mm:ss")</span>
                                 <span class="badge @GetOutcomeBadge(a.Outcome)">@a.Outcome</span>
@@ -164,6 +203,46 @@
 @code {
     private bool _loading = false;
     private Timer? _autoRefreshTimer;
+    private int _renderKey = 0;
+
+    private ApexChartOptions<LatencySnapshot> _chartOptions = new()
+    {
+        Chart = new Chart
+        {
+            Background = "transparent",
+            Toolbar = new Toolbar { Show = false },
+            Animations = new Animations
+            {
+                Enabled = true,
+                Easing = Easing.Easeinout,
+                Speed = 600,
+                AnimateGradually = new AnimateGradually { Enabled = true, Delay = 80 }
+            }
+        },
+        Colors = new List<string> { "#00ffc8" },
+        Fill = new Fill
+        {
+            Type = new List<FillType> { FillType.Gradient },
+            Gradient = new FillGradient
+            {
+                ShadeIntensity = 1,
+                OpacityFrom = 0.35,
+                OpacityTo = 0.0,
+                Stops = new List<double> { 0, 100 }
+            }
+        },
+        Stroke = new Stroke
+        {
+            Curve = new List<Curve> { Curve.Smooth },
+            Width = new List<double> { 2 }
+        },
+        Grid = new Grid { Show = false },
+        Xaxis = new XAxis { Labels = new XAxisLabels { Show = false }, AxisBorder = new AxisBorder { Show = false }, AxisTicks = new AxisTicks { Show = false } },
+        Yaxis = new List<YAxis> { new YAxis { Show = false } },
+        Tooltip = new Tooltip { Theme = Mode.Dark, X = new TooltipX { Show = false } },
+        DataLabels = new DataLabels { Enabled = false },
+        Legend = new Legend { Show = false }
+    };
 
     protected override async Task OnInitializedAsync()
     {
@@ -177,11 +256,16 @@
         _loading = true;
         StateHasChanged();
         await State.RefreshAsync();
+        _renderKey++;
         _loading = false;
         StateHasChanged();
     }
 
-    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+    private void OnStateChanged() => InvokeAsync(() =>
+    {
+        _renderKey++;
+        StateHasChanged();
+    });
 
     public void Dispose()
     {
@@ -191,10 +275,18 @@
 
     private static string GetStatusColor(HealthStatus s) => s switch
     {
-        HealthStatus.Healthy => "var(--healthy)",
-        HealthStatus.Warning => "var(--warning)",
-        HealthStatus.Critical => "var(--critical)",
+        HealthStatus.Healthy => "#00ffc8",
+        HealthStatus.Warning => "#ff7b00",
+        HealthStatus.Critical => "#ff2d55",
         _ => "var(--text-muted)"
+    };
+
+    private static string GetStatusBg(HealthStatus s) => s switch
+    {
+        HealthStatus.Healthy => "rgba(0,255,200,0.08)",
+        HealthStatus.Warning => "rgba(255,123,0,0.08)",
+        HealthStatus.Critical => "rgba(255,45,85,0.08)",
+        _ => "rgba(255,255,255,0.04)"
     };
 
     private static string GetStatusClass(HealthStatus s) => s switch
@@ -207,16 +299,16 @@
 
     private static string GetStatusIcon(HealthStatus s) => s switch
     {
-        HealthStatus.Healthy => "✅",
-        HealthStatus.Warning => "⚠️",
-        HealthStatus.Critical => "🔴",
-        _ => "❓"
+        HealthStatus.Healthy => "✓",
+        HealthStatus.Warning => "⚠",
+        HealthStatus.Critical => "✕",
+        _ => "?"
     };
 
     private static string GetActionIcon(ActionType t) => t switch
     {
-        ActionType.ReorganizeIndex => "🔧",
-        ActionType.KillQuery => "🛑",
+        ActionType.ReorganizeIndex => "⟳",
+        ActionType.KillQuery => "✕",
         _ => "⚡"
     };
 
@@ -228,5 +320,24 @@
         ActionOutcome.Failed => "badge-critical",
         _ => "badge-info"
     };
+
+    private static string BuildSparklinePoints(List<LatencySnapshot> data)
+    {
+        if (data.Count < 2) return "";
+        var max = data.Max(d => d.ProbeQueryMs);
+        var min = data.Min(d => d.ProbeQueryMs);
+        var range = max - min;
+        if (range < 0.001) range = 1;
+        var width = 80.0;
+        var height = 22.0;
+        var step = width / (data.Count - 1);
+        var points = data.Select((d, i) =>
+        {
+            var x = i * step;
+            var y = height - ((d.ProbeQueryMs - min) / range * height);
+            return $"{x:F1},{y:F1}";
+        });
+        return string.Join(" ", points);
+    }
 }
 
