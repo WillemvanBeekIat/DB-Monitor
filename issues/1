@@ -1,0 +1,30 @@
+## Summary
+
+Currently, monitored indexes must be explicitly configured in `appsettings.json` under `Fragmentation.MonitoredIndexes`. This requires manual setup and prior knowledge of the database schema. Adding automatic index discovery would reduce setup friction and make DB-Monitor easier to use out of the box.
+
+## Proposed Solution
+
+Query SQL Server DMVs (e.g., `sys.indexes`, `sys.dm_db_index_physical_stats`) to automatically discover indexes that exceed the configured fragmentation threshold, without requiring them to be explicitly listed in configuration.
+
+### Implementation Path
+
+1. **Add a discovery query** in `DbMonitor.SqlServer` that queries `sys.indexes` joined with `sys.dm_db_index_physical_stats` to find all indexes above the fragmentation threshold.
+2. **Add a configuration option** (e.g., `Fragmentation.AutoDiscover = true`) to enable/disable automatic discovery alongside explicit configuration.
+3. **Merge discovered indexes** with explicitly configured ones in `FragmentationMonitor`, deduplicating by database/schema/table/index name.
+4. **Respect existing options** — `MinimumPageCount`, `FragmentationPercentThreshold`, `AllowReorganize`, and `DryRun` should still apply to auto-discovered indexes.
+5. **Display auto-discovered indexes** on the **Indexes** page with a visual indicator (e.g., a badge showing "Auto-discovered").
+6. **Add unit tests** in `DbMonitor.Tests` covering the discovery logic and merging behavior.
+
+## Acceptance Criteria
+
+- [ ] Setting `Fragmentation.AutoDiscover = true` causes DB-Monitor to discover and monitor fragmented indexes without any explicit `MonitoredIndexes` configuration.
+- [ ] Explicitly configured indexes still take precedence and can override auto-discovered settings.
+- [ ] Auto-discovered indexes are visible in the Indexes UI page.
+- [ ] All existing tests continue to pass.
+- [ ] New unit tests are added for the discovery logic.
+
+## References
+
+- Existing `FragmentationMonitor` in `DbMonitor.SqlServer`
+- `FragmentationEligibilityEvaluator` in `DbMonitor.Core`
+- `MonitoredIndexes` configuration in `appsettings.json`
