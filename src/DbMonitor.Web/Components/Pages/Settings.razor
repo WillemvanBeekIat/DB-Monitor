@@ -212,7 +212,7 @@
             @if (CanWriteSettings)
             {
                 <div style="display:flex;align-items:center;gap:6px">
-                    <input class="setting-input setting-input-number" type="number" min="0" step="any" @bind="_warningMs" />
+                    <input class="setting-input setting-input-number" type="number" min="1" step="any" @bind="_warningMs" />
                     <span class="setting-unit">ms</span>
                 </div>
             }
@@ -226,7 +226,7 @@
             @if (CanWriteSettings)
             {
                 <div style="display:flex;align-items:center;gap:6px">
-                    <input class="setting-input setting-input-number" type="number" min="0" step="any" @bind="_criticalMs" />
+                    <input class="setting-input setting-input-number" type="number" min="1" step="any" @bind="_criticalMs" />
                     <span class="setting-unit">ms</span>
                 </div>
             }
