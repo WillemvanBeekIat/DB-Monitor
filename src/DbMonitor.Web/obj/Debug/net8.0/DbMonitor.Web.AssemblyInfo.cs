@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DbMonitor.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+129368f11a7e63e348842ace376237276c8d9a35")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f4d9352e80cd5426b23cbd49867a9025543f446a")]
 [assembly: System.Reflection.AssemblyProductAttribute("DbMonitor.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DbMonitor.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

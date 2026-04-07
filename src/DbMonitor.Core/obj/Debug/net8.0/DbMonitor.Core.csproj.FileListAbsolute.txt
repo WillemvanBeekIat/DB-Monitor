@@ -10,15 +10,3 @@
 /home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/obj/Debug/net8.0/refint/DbMonitor.Core.dll
 /home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/obj/Debug/net8.0/DbMonitor.Core.pdb
 /home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/obj/Debug/net8.0/ref/DbMonitor.Core.dll
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\bin\Debug\net8.0\DbMonitor.Core.deps.json
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\bin\Debug\net8.0\DbMonitor.Core.dll
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\bin\Debug\net8.0\DbMonitor.Core.pdb
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.AssemblyInfoInputs.cache
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.AssemblyInfo.cs
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.csproj.CoreCompileInputs.cache
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.sourcelink.json
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.dll
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\refint\DbMonitor.Core.dll
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\DbMonitor.Core.pdb
-C:\Users\Gebruiker1\source\repos\WillemvanBeekIat\DB-Monitor\src\DbMonitor.Core\obj\Debug\net8.0\ref\DbMonitor.Core.dll
