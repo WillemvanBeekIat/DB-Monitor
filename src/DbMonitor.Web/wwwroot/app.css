@@ -758,6 +758,29 @@ input:focus, select:focus, textarea:focus {
     border-radius: 4px;
     border: 1px solid rgba(0, 212, 255, 0.08);
 }
+.setting-input {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    background: rgba(0, 212, 255, 0.06);
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 212, 255, 0.25);
+    outline: none;
+    min-width: 180px;
+    transition: border-color 0.15s;
+}
+.setting-input:focus {
+    border-color: var(--accent);
+    background: rgba(0, 212, 255, 0.1);
+}
+.setting-input-wide { min-width: 340px; max-width: 560px; }
+.setting-input-number { min-width: 80px; max-width: 110px; text-align: right; }
+.setting-unit {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-family: 'JetBrains Mono', monospace;
+}
 
 /* ---------- Audit entries ---------- */
 .audit-entry {

@@ -122,5 +122,38 @@ public class ConfigWriter : IConfigWriter
 
     private static string BuildKey(string db, string schema, string table, string index)
         => $"{db}.{schema}.{table}.{index}";
+
+    public async Task PatchSectionAsync(string section, IReadOnlyDictionary<string, JsonNode?> fields, CancellationToken ct = default)
+    {
+        await _lock.WaitAsync(ct);
+        try
+        {
+            var json = await File.ReadAllTextAsync(_appSettingsPath, ct);
+            var node = JsonNode.Parse(json) as JsonObject
+                ?? throw new InvalidOperationException("appsettings.json is not a JSON object");
+
+            if (node[section] is not JsonObject sectionObj)
+            {
+                sectionObj = new JsonObject();
+                node[section] = sectionObj;
+            }
+
+            foreach (var (key, value) in fields)
+                sectionObj[key] = value?.DeepClone();
+
+            var updated = node.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(_appSettingsPath, updated, ct);
+            _logger.LogInformation("Patched section {Section} with {Count} field(s)", section, fields.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to patch section {Section}", section);
+            throw;
+        }
+        finally
+        {
+            _lock.Release();
+        }
+    }
 }
 
