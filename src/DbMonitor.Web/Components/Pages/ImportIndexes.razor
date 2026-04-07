@@ -1,0 +1,289 @@
+@page "/import-indexes"
+@rendermode InteractiveServer
+@inject IIndexDiscoveryService DiscoveryService
+@inject IConfigWriter ConfigWriter
+@inject IOptions<FragmentationOptions> FragOpts
+@inject IOptions<ConfigMutationOptions> MutationOpts
+
+<PageTitle>Import Indexes – DB Monitor</PageTitle>
+
+<div class="page-content">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <h1 class="page-title" style="margin-bottom:0">Import Indexes</h1>
+        <button class="btn btn-secondary btn-sm" @onclick="DiscoverAsync" disabled="@_loading">&#8635; Discover</button>
+    </div>
+
+    <p style="color:var(--text-muted);font-size:13px;margin-bottom:16px">
+        Discover all indexes from the connected SQL Server databases and add selected ones to the monitoring configuration.
+    </p>
+
+    @if (!MutationOpts.Value.AllowIndexImport)
+    {
+        <div class="alert alert-critical" style="margin-bottom:16px">
+            Index import is disabled. Set <code>ConfigMutation.AllowIndexImport = true</code> in appsettings.json to enable it.
+        </div>
+    }
+
+    @if (_importSuccess)
+    {
+        <div class="alert alert-success" style="margin-bottom:16px">✅ @_importMessage</div>
+    }
+    @if (_importError != null)
+    {
+        <div class="alert alert-critical" style="margin-bottom:16px">@_importError</div>
+    }
+
+    @if (_loading)
+    {
+        <div class="loading-state"><div class="spinner"></div><p>Discovering indexes…</p></div>
+    }
+    else if (_indexes.Count == 0 && _discovered)
+    {
+        <div class="empty-state">
+            <span class="empty-icon">🔍</span>
+            <p>No indexes found</p>
+            <span style="font-size:13px;color:var(--text-muted)">Ensure the connection string is set and the databases are accessible.</span>
+        </div>
+    }
+    else if (_indexes.Count > 0)
+    {
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap">
+            <span style="font-size:13px;color:var(--text-muted)">@_indexes.Count index(es) found across @_databases.Count() database(s)</span>
+
+            @if (_databases.Count() > 1)
+            {
+                <select class="form-select" style="width:auto;font-size:13px" @onchange="OnDatabaseFilterChanged">
+                    <option value="">All databases</option>
+                    @foreach (var db in _databases)
+                    {
+                        <option value="@db">@db</option>
+                    }
+                </select>
+            }
+
+            <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
+                <input type="checkbox" @onchange="ToggleHideMonitored" checked="@_hideAlreadyMonitored" />
+                Hide already monitored
+            </label>
+
+            <button class="btn btn-secondary btn-sm" @onclick="SelectAll">Select all</button>
+            <button class="btn btn-secondary btn-sm" @onclick="ClearAll">Clear</button>
+
+            <button class="btn btn-success btn-sm" @onclick="ImportSelectedAsync"
+                    disabled="@(!CanImport || _selectedKeys.Count == 0)">
+                ⬇ Import @(_selectedKeys.Count > 0 ? $"({_selectedKeys.Count})" : "")
+            </button>
+        </div>
+
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width:36px">
+                            <input type="checkbox"
+                                   checked="@AllVisibleSelected"
+                                   @onchange="ToggleSelectAll"
+                                   disabled="@(!CanImport)" />
+                        </th>
+                        <th>Database</th>
+                        <th>Schema.Table</th>
+                        <th>Index</th>
+                        <th>Type</th>
+                        <th>Fragmentation</th>
+                        <th>Pages</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var idx in Filtered)
+                    {
+                        var key = Key(idx);
+                        var isSelected = _selectedKeys.Contains(key);
+                        <tr class="@(idx.AlreadyMonitored ? "row-muted" : "")">
+                            <td>
+                                <input type="checkbox"
+                                       checked="@isSelected"
+                                       @onchange="e => ToggleRow(key, (bool)(e.Value ?? false))"
+                                       disabled="@(idx.AlreadyMonitored || !CanImport)" />
+                            </td>
+                            <td>@idx.Database</td>
+                            <td>@($"{idx.Schema}.{idx.Table}")</td>
+                            <td style="font-weight:600">@idx.IndexName</td>
+                            <td>
+                                <span class="badge badge-info">@idx.IndexType.Replace("_", " ")</span>
+                                @if (idx.IsPrimaryKey) { <span class="badge badge-healthy" style="margin-left:4px">PK</span> }
+                                @if (idx.IsUnique && !idx.IsPrimaryKey) { <span class="badge badge-info" style="margin-left:4px">UQ</span> }
+                            </td>
+                            <td>
+                                @if (idx.PageCount > 0)
+                                {
+                                    <span class="@(idx.FragmentationPercent >= 30 ? "status-critical" : idx.FragmentationPercent >= 10 ? "status-warning" : "")">
+                                        @idx.FragmentationPercent.ToString("F1")%
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span style="color:var(--text-muted)">n/a</span>
+                                }
+                            </td>
+                            <td>@(idx.PageCount > 0 ? idx.PageCount.ToString("N0") : "-")</td>
+                            <td>
+                                @if (idx.AlreadyMonitored)
+                                {
+                                    <span class="badge badge-healthy">Monitored</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-info">Not configured</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+@code {
+    private List<DiscoverableIndex> _indexes = new();
+    private HashSet<string> _selectedKeys = new();
+    private bool _loading = false;
+    private bool _discovered = false;
+    private bool _importSuccess = false;
+    private string? _importError;
+    private string _importMessage = string.Empty;
+    private bool _hideAlreadyMonitored = true;
+    private string _dbFilter = string.Empty;
+
+    private bool CanImport => MutationOpts.Value.AllowIndexImport;
+
+    private IEnumerable<string> _databases => _indexes.Select(i => i.Database).Distinct().OrderBy(d => d);
+
+    private IEnumerable<DiscoverableIndex> Filtered
+    {
+        get
+        {
+            var q = _indexes.AsEnumerable();
+            if (!string.IsNullOrEmpty(_dbFilter))
+                q = q.Where(i => i.Database == _dbFilter);
+            if (_hideAlreadyMonitored)
+                q = q.Where(i => !i.AlreadyMonitored);
+            return q;
+        }
+    }
+
+    private bool AllVisibleSelected => Filtered.Any() && Filtered.All(i => _selectedKeys.Contains(Key(i)));
+
+    protected override async Task OnInitializedAsync() => await DiscoverAsync();
+
+    private async Task DiscoverAsync()
+    {
+        _loading = true;
+        _importSuccess = false;
+        _importError = null;
+        _selectedKeys.Clear();
+        StateHasChanged();
+
+        try
+        {
+            var found = await DiscoveryService.DiscoverAsync();
+            _indexes = found.ToList();
+            _discovered = true;
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Discovery failed: {ex.Message}";
+            _indexes = new();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task ImportSelectedAsync()
+    {
+        if (!CanImport || _selectedKeys.Count == 0) return;
+
+        _importSuccess = false;
+        _importError = null;
+
+        var toImport = _indexes
+            .Where(i => _selectedKeys.Contains(Key(i)))
+            .Select(i => new MonitoredIndexConfig
+            {
+                Database = i.Database,
+                Schema = i.Schema,
+                Table = i.Table,
+                Index = i.IndexName,
+                Enabled = true,
+                FragmentationPercentThreshold = 30.0,
+                MinimumPageCount = 1000,
+                AllowReorganize = true
+            })
+            .ToList();
+
+        try
+        {
+            await ConfigWriter.AddMonitoredIndexesAsync(toImport);
+            _importMessage = $"Successfully imported {toImport.Count} index(es) into appsettings.json. Restart the application to apply changes.";
+            _importSuccess = true;
+            _selectedKeys.Clear();
+
+            // Mark newly imported indexes as already monitored
+            foreach (var idx in _indexes.Where(i => toImport.Any(t => Key(t) == Key(i))))
+                idx.AlreadyMonitored = true;
+
+            await Task.Delay(5000);
+            _importSuccess = false;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            _importError = $"Import failed: {ex.Message}";
+        }
+    }
+
+    private void ToggleRow(string key, bool selected)
+    {
+        if (selected) _selectedKeys.Add(key);
+        else _selectedKeys.Remove(key);
+    }
+
+    private void ToggleSelectAll(ChangeEventArgs e)
+    {
+        var select = (bool)(e.Value ?? false);
+        if (select)
+            foreach (var idx in Filtered.Where(i => !i.AlreadyMonitored))
+                _selectedKeys.Add(Key(idx));
+        else
+            foreach (var idx in Filtered)
+                _selectedKeys.Remove(Key(idx));
+    }
+
+    private void SelectAll()
+    {
+        foreach (var idx in Filtered.Where(i => !i.AlreadyMonitored))
+            _selectedKeys.Add(Key(idx));
+    }
+
+    private void ClearAll() => _selectedKeys.Clear();
+
+    private void ToggleHideMonitored(ChangeEventArgs e)
+    {
+        _hideAlreadyMonitored = (bool)(e.Value ?? false);
+        // Deselect any now-hidden rows
+        foreach (var idx in _indexes.Where(i => i.AlreadyMonitored))
+            _selectedKeys.Remove(Key(idx));
+    }
+
+    private void OnDatabaseFilterChanged(ChangeEventArgs e)
+    {
+        _dbFilter = e.Value?.ToString() ?? string.Empty;
+        _selectedKeys.Clear();
+    }
+
+    private static string Key(DiscoverableIndex idx) => $"{idx.Database}.{idx.Schema}.{idx.Table}.{idx.IndexName}";
+    private static string Key(MonitoredIndexConfig idx) => $"{idx.Database}.{idx.Schema}.{idx.Table}.{idx.Index}";
+}
