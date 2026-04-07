@@ -1,29 +1,37 @@
 {
   "format": 1,
   "restore": {
-    "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/DbMonitor.Web.csproj": {}
+    "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Web\\DbMonitor.Web.csproj": {}
   },
   "projects": {
-    "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj": {
+    "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj",
+        "projectUniqueName": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj",
         "projectName": "DbMonitor.Core",
-        "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
-        "outputPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/obj/",
+        "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj",
+        "packagesPath": "C:\\Users\\Gebruiker1\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/runner/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Gebruiker1\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
+            "framework": "net8.0",
             "targetAlias": "net8.0",
             "projectReferences": {}
           }
@@ -42,6 +50,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "imports": [
             "net461",
@@ -59,34 +68,42 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj": {
+    "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj",
+        "projectUniqueName": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj",
         "projectName": "DbMonitor.Infrastructure",
-        "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
-        "outputPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/obj/",
+        "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\Gebruiker1\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/runner/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Gebruiker1\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
+            "framework": "net8.0",
             "targetAlias": "net8.0",
             "projectReferences": {
-              "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj": {
-                "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj"
+              "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj": {
+                "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj"
               }
             }
           }
@@ -105,6 +122,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "dependencies": {
             "Microsoft.Extensions.Logging.Abstractions": {
@@ -132,34 +150,42 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.SqlServer/DbMonitor.SqlServer.csproj": {
+    "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.SqlServer\\DbMonitor.SqlServer.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.SqlServer/DbMonitor.SqlServer.csproj",
+        "projectUniqueName": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.SqlServer\\DbMonitor.SqlServer.csproj",
         "projectName": "DbMonitor.SqlServer",
-        "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.SqlServer/DbMonitor.SqlServer.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
-        "outputPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.SqlServer/obj/",
+        "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.SqlServer\\DbMonitor.SqlServer.csproj",
+        "packagesPath": "C:\\Users\\Gebruiker1\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.SqlServer\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/runner/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Gebruiker1\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
+            "framework": "net8.0",
             "targetAlias": "net8.0",
             "projectReferences": {
-              "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj": {
-                "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj"
+              "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj": {
+                "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj"
               }
             }
           }
@@ -178,6 +204,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "dependencies": {
             "Microsoft.Data.SqlClient": {
@@ -209,40 +236,48 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/DbMonitor.Web.csproj": {
+    "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Web\\DbMonitor.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/DbMonitor.Web.csproj",
+        "projectUniqueName": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Web\\DbMonitor.Web.csproj",
         "projectName": "DbMonitor.Web",
-        "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/DbMonitor.Web.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
-        "outputPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/obj/",
+        "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Web\\DbMonitor.Web.csproj",
+        "packagesPath": "C:\\Users\\Gebruiker1\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Web\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/home/runner/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Gebruiker1\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net8.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net8.0": {
+            "framework": "net8.0",
             "targetAlias": "net8.0",
             "projectReferences": {
-              "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj": {
-                "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj"
+              "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj": {
+                "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj"
               },
-              "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj": {
-                "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj"
+              "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj": {
+                "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj"
               },
-              "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.SqlServer/DbMonitor.SqlServer.csproj": {
-                "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.SqlServer/DbMonitor.SqlServer.csproj"
+              "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.SqlServer\\DbMonitor.SqlServer.csproj": {
+                "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.SqlServer\\DbMonitor.SqlServer.csproj"
               }
             }
           }
@@ -261,6 +296,7 @@
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "dependencies": {
             "Microsoft.Extensions.Hosting": {
@@ -287,7 +323,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

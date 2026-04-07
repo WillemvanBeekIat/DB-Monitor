@@ -5798,35 +5798,44 @@
     ]
   },
   "packageFolders": {
-    "/home/runner/.nuget/packages/": {}
+    "C:\\Users\\Gebruiker1\\.nuget\\packages\\": {},
+    "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "/home/runner/work/DB-Monitor/DB-Monitor/tests/DbMonitor.Tests/DbMonitor.Tests.csproj",
+      "projectUniqueName": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\tests\\DbMonitor.Tests\\DbMonitor.Tests.csproj",
       "projectName": "DbMonitor.Tests",
-      "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/tests/DbMonitor.Tests/DbMonitor.Tests.csproj",
-      "packagesPath": "/home/runner/.nuget/packages/",
-      "outputPath": "/home/runner/work/DB-Monitor/DB-Monitor/tests/DbMonitor.Tests/obj/",
+      "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\tests\\DbMonitor.Tests\\DbMonitor.Tests.csproj",
+      "packagesPath": "C:\\Users\\Gebruiker1\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\tests\\DbMonitor.Tests\\obj\\",
       "projectStyle": "PackageReference",
+      "fallbackFolders": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+      ],
       "configFilePaths": [
-        "/home/runner/.nuget/NuGet/NuGet.Config"
+        "C:\\Users\\Gebruiker1\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net8.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+        "C:\\Program Files\\dotnet\\library-packs": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
         "net8.0": {
+          "framework": "net8.0",
           "targetAlias": "net8.0",
           "projectReferences": {
-            "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj": {
-              "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Core/DbMonitor.Core.csproj"
+            "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj": {
+              "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Core\\DbMonitor.Core.csproj"
             },
-            "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj": {
-              "projectPath": "/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Infrastructure/DbMonitor.Infrastructure.csproj"
+            "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj": {
+              "projectPath": "C:\\Users\\Gebruiker1\\source\\repos\\WillemvanBeekIat\\DB-Monitor\\src\\DbMonitor.Infrastructure\\DbMonitor.Infrastructure.csproj"
             }
           }
         }
@@ -5845,6 +5854,7 @@
     },
     "frameworks": {
       "net8.0": {
+        "framework": "net8.0",
         "targetAlias": "net8.0",
         "dependencies": {
           "Microsoft.NET.Test.Sdk": {
@@ -5880,7 +5890,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/10.0.201/PortableRuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.201/PortableRuntimeIdentifierGraph.json"
       }
     }
   }
