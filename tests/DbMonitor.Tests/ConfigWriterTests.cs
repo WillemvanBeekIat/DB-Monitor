@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
+using DbMonitor.Core.Configuration;
 using DbMonitor.Infrastructure;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
@@ -109,6 +110,126 @@ public class ConfigWriterTests : IDisposable
 
         doc = JsonDocument.Parse(File.ReadAllText(_configPath));
         Assert.False(doc.RootElement.GetProperty("Fragmentation").GetProperty("DryRun").GetBoolean());
+    }
+
+    [Fact]
+    public async Task AddMonitoredIndexesAsync_AddsIndexToEmptyArray()
+    {
+        WriteConfig("""{"Fragmentation":{"MonitoredIndexes":[]}}""");
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.AddMonitoredIndexesAsync(new[]
+        {
+            new MonitoredIndexConfig
+            {
+                Database = "MyDb",
+                Schema = "dbo",
+                Table = "Orders",
+                Index = "IX_Orders_Date",
+                Enabled = true,
+                FragmentationPercentThreshold = 30.0
+            }
+        });
+
+        var json = File.ReadAllText(_configPath);
+        var doc = JsonDocument.Parse(json);
+        var arr = doc.RootElement.GetProperty("Fragmentation").GetProperty("MonitoredIndexes");
+
+        Assert.Equal(1, arr.GetArrayLength());
+        var first = arr[0];
+        Assert.Equal("MyDb", first.GetProperty("Database").GetString());
+        Assert.Equal("Orders", first.GetProperty("Table").GetString());
+        Assert.Equal("IX_Orders_Date", first.GetProperty("Index").GetString());
+    }
+
+    [Fact]
+    public async Task AddMonitoredIndexesAsync_CreatesSectionWhenMissing()
+    {
+        WriteConfig("{}");
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.AddMonitoredIndexesAsync(new[]
+        {
+            new MonitoredIndexConfig { Database = "Db1", Schema = "dbo", Table = "T1", Index = "IX_T1" }
+        });
+
+        var json = File.ReadAllText(_configPath);
+        var doc = JsonDocument.Parse(json);
+        var arr = doc.RootElement.GetProperty("Fragmentation").GetProperty("MonitoredIndexes");
+
+        Assert.Equal(1, arr.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AddMonitoredIndexesAsync_DoesNotAddDuplicates()
+    {
+        WriteConfig("""
+        {
+          "Fragmentation": {
+            "MonitoredIndexes": [
+              {"Database":"Db1","Schema":"dbo","Table":"T1","Index":"IX_T1","Enabled":true,"FragmentationPercentThreshold":30,"MinimumPageCount":1000,"MinimumUsageScore":0,"AllowReorganize":true,"UsageWeights":{"SeekWeight":1,"ScanWeight":0.5,"LookupWeight":0.8,"UpdateWeight":-0.2}}
+            ]
+          }
+        }
+        """);
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.AddMonitoredIndexesAsync(new[]
+        {
+            new MonitoredIndexConfig { Database = "Db1", Schema = "dbo", Table = "T1", Index = "IX_T1" }
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        var arr = doc.RootElement.GetProperty("Fragmentation").GetProperty("MonitoredIndexes");
+
+        Assert.Equal(1, arr.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AddMonitoredIndexesAsync_AddsMultipleIndexes()
+    {
+        WriteConfig("""{"Fragmentation":{"MonitoredIndexes":[]}}""");
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.AddMonitoredIndexesAsync(new[]
+        {
+            new MonitoredIndexConfig { Database = "Db1", Schema = "dbo", Table = "T1", Index = "IX_A" },
+            new MonitoredIndexConfig { Database = "Db1", Schema = "dbo", Table = "T1", Index = "IX_B" }
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        var arr = doc.RootElement.GetProperty("Fragmentation").GetProperty("MonitoredIndexes");
+
+        Assert.Equal(2, arr.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AddMonitoredIndexesAsync_PreservesExistingSettings()
+    {
+        WriteConfig("""
+        {
+          "Fragmentation": {
+            "Enabled": true,
+            "DryRun": false,
+            "MonitoredIndexes": []
+          },
+          "SqlServer": { "ConnectionString": "Server=test" }
+        }
+        """);
+
+        var writer = new ConfigWriter(_configPath, NullLogger<ConfigWriter>.Instance);
+        await writer.AddMonitoredIndexesAsync(new[]
+        {
+            new MonitoredIndexConfig { Database = "Db1", Schema = "dbo", Table = "T1", Index = "IX_T1" }
+        });
+
+        var doc = JsonDocument.Parse(File.ReadAllText(_configPath));
+        var frag = doc.RootElement.GetProperty("Fragmentation");
+
+        Assert.True(frag.GetProperty("Enabled").GetBoolean());
+        Assert.False(frag.GetProperty("DryRun").GetBoolean());
+        Assert.Equal("Server=test", doc.RootElement.GetProperty("SqlServer").GetProperty("ConnectionString").GetString());
+        Assert.Equal(1, frag.GetProperty("MonitoredIndexes").GetArrayLength());
     }
 
     public void Dispose()
