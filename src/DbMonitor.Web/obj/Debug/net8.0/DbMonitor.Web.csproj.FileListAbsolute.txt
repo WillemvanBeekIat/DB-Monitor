@@ -96,3 +96,4 @@
 /home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/obj/Debug/net8.0/DbMonitor.Web.pdb
 /home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/obj/Debug/net8.0/DbMonitor.Web.genruntimeconfig.cache
 /home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/obj/Debug/net8.0/ref/DbMonitor.Web.dll
+/home/runner/work/DB-Monitor/DB-Monitor/src/DbMonitor.Web/bin/Debug/net8.0/data/state/instance-health.json
