@@ -52,6 +52,7 @@ builder.Services.AddSingleton<ILongRunningQueryMonitor, LongRunningQueryMonitor>
 builder.Services.AddSingleton<IUsageMonitor, UsageMonitor>();
 builder.Services.AddSingleton<IErrorLogMonitor, ErrorLogMonitor>();
 builder.Services.AddSingleton<IActionExecutor, DbMonitor.SqlServer.SqlActionExecutor>();
+builder.Services.AddSingleton<IIndexDiscoveryService, DbMonitor.SqlServer.IndexDiscoveryService>();
 
 // UI state service
 builder.Services.AddSingleton<MonitoringStateService>();
