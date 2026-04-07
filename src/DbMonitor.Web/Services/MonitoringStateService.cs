@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using DbMonitor.Core.Interfaces;
 using DbMonitor.Core.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace DbMonitor.Web.Services;
@@ -16,7 +17,7 @@ public class MonitoringStateService
     private readonly IFragmentationMonitor _fragmentation;
     private readonly ILongRunningQueryMonitor _queryMonitor;
     private readonly IErrorLogMonitor _errorLog;
-    private readonly IAuditWriter _auditWriter;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<MonitoringStateService> _logger;
 
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
@@ -40,7 +41,7 @@ public class MonitoringStateService
         IFragmentationMonitor fragmentation,
         ILongRunningQueryMonitor queryMonitor,
         IErrorLogMonitor errorLog,
-        IAuditWriter auditWriter,
+        IServiceScopeFactory scopeFactory,
         ILogger<MonitoringStateService> logger)
     {
         _reachability = reachability;
@@ -48,7 +49,7 @@ public class MonitoringStateService
         _fragmentation = fragmentation;
         _queryMonitor = queryMonitor;
         _errorLog = errorLog;
-        _auditWriter = auditWriter;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -63,7 +64,13 @@ public class MonitoringStateService
             var indexes = await _fragmentation.CheckAsync(ct);
             var queries = await _queryMonitor.GetLongRunningQueriesAsync(ct);
             var errors = await _errorLog.ReadNewErrorsAsync(ct);
-            var recentActions = await _auditWriter.GetRecentAsync(10, ct);
+
+            IReadOnlyList<AuditEntry> recentActions;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var auditWriter = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
+                recentActions = await auditWriter.GetRecentAsync(10, ct);
+            }
 
             _lastQueries = queries;
             _lastIndexes = indexes;

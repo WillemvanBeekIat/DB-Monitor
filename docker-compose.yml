@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dbmonitor-postgres
+    environment:
+      POSTGRES_USER: dbmonitor
+      POSTGRES_PASSWORD: dbmonitor_dev_password
+      POSTGRES_DB: dbmonitor
+    ports:
+      - "5432:5432"
+    volumes:
+      - dbmonitor_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbmonitor -d dbmonitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  dbmonitor_postgres_data:

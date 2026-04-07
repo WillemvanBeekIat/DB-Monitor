@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DbMonitor.Core.Configuration;
@@ -15,23 +16,20 @@ public class SqlActionExecutor : IActionExecutor
     private readonly SqlServerOptions _sqlOptions;
     private readonly FragmentationOptions _fragOptions;
     private readonly LongRunningQueryOptions _queryOptions;
-    private readonly IStateStore _stateStore;
-    private readonly IAuditWriter _auditWriter;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SqlActionExecutor> _logger;
 
     public SqlActionExecutor(
         IOptions<SqlServerOptions> sqlOptions,
         IOptions<FragmentationOptions> fragOptions,
         IOptions<LongRunningQueryOptions> queryOptions,
-        IStateStore stateStore,
-        IAuditWriter auditWriter,
+        IServiceScopeFactory scopeFactory,
         ILogger<SqlActionExecutor> logger)
     {
         _sqlOptions = sqlOptions.Value;
         _fragOptions = fragOptions.Value;
         _queryOptions = queryOptions.Value;
-        _stateStore = stateStore;
-        _auditWriter = auditWriter;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -76,8 +74,12 @@ public class SqlActionExecutor : IActionExecutor
                 entry.Outcome = ActionOutcome.Executed;
 
                 var cooldownKey = $"frag:{index.Database}.{index.Schema}.{index.Table}.{index.IndexName}";
-                await _stateStore.SaveCooldownAsync(cooldownKey,
-                    DateTimeOffset.UtcNow.AddMinutes(_fragOptions.CooldownMinutes), ct);
+                using (var scope = _scopeFactory.CreateScope())
+                {
+                    var stateStore = scope.ServiceProvider.GetRequiredService<IStateStore>();
+                    await stateStore.SaveCooldownAsync(cooldownKey,
+                        DateTimeOffset.UtcNow.AddMinutes(_fragOptions.CooldownMinutes), ct);
+                }
 
                 _logger.LogInformation("Reorganized index {Target}", entry.Target);
             }
@@ -94,7 +96,11 @@ public class SqlActionExecutor : IActionExecutor
             _logger.LogError(ex, "Failed to reorganize index {Target}", entry.Target);
         }
 
-        await _auditWriter.WriteAsync(entry, ct);
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var auditWriter = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
+            await auditWriter.WriteAsync(entry, ct);
+        }
         return entry;
     }
 
@@ -150,7 +156,11 @@ public class SqlActionExecutor : IActionExecutor
             _logger.LogError(ex, "Failed to kill session {SessionId}", query.SessionId);
         }
 
-        await _auditWriter.WriteAsync(entry, ct);
+        using (var scope = _scopeFactory.CreateScope())
+        {
+            var auditWriter = scope.ServiceProvider.GetRequiredService<IAuditWriter>();
+            await auditWriter.WriteAsync(entry, ct);
+        }
         return entry;
     }
 }

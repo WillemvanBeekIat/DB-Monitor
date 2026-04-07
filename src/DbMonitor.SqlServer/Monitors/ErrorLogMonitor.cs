@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DbMonitor.Core.Configuration;
@@ -15,18 +16,18 @@ public class ErrorLogMonitor : IErrorLogMonitor
 {
     private readonly SqlServerOptions _sqlOptions;
     private readonly ErrorLogOptions _errorOptions;
-    private readonly IStateStore _stateStore;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<ErrorLogMonitor> _logger;
 
     public ErrorLogMonitor(
         IOptions<SqlServerOptions> sqlOptions,
         IOptions<ErrorLogOptions> errorOptions,
-        IStateStore stateStore,
+        IServiceScopeFactory scopeFactory,
         ILogger<ErrorLogMonitor> logger)
     {
         _sqlOptions = sqlOptions.Value;
         _errorOptions = errorOptions.Value;
-        _stateStore = stateStore;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
@@ -38,7 +39,12 @@ public class ErrorLogMonitor : IErrorLogMonitor
 
         try
         {
-            var bookmark = await _stateStore.LoadErrorBookmarkAsync(ct);
+            string? bookmark;
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var stateStore = scope.ServiceProvider.GetRequiredService<IStateStore>();
+                bookmark = await stateStore.LoadErrorBookmarkAsync(ct);
+            }
             DateTimeOffset? since = null;
             if (bookmark != null && DateTimeOffset.TryParse(bookmark, out var parsedTs))
                 since = parsedTs;
@@ -87,7 +93,11 @@ public class ErrorLogMonitor : IErrorLogMonitor
             }
 
             if (latestTs.HasValue)
-                await _stateStore.SaveErrorBookmarkAsync(latestTs.Value.ToString("o"), ct);
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var stateStore = scope.ServiceProvider.GetRequiredService<IStateStore>();
+                await stateStore.SaveErrorBookmarkAsync(latestTs.Value.ToString("o"), ct);
+            }
         }
         catch (OperationCanceledException)
         {

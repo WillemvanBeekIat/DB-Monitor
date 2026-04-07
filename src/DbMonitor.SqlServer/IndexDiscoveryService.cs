@@ -14,16 +14,16 @@ namespace DbMonitor.SqlServer;
 public class IndexDiscoveryService : IIndexDiscoveryService
 {
     private readonly SqlServerOptions _sqlOptions;
-    private readonly FragmentationOptions _fragOptions;
+    private readonly IOptionsMonitor<FragmentationOptions> _fragOptions;
     private readonly ILogger<IndexDiscoveryService> _logger;
 
     public IndexDiscoveryService(
         IOptions<SqlServerOptions> sqlOptions,
-        IOptions<FragmentationOptions> fragOptions,
+        IOptionsMonitor<FragmentationOptions> fragOptions,
         ILogger<IndexDiscoveryService> logger)
     {
         _sqlOptions = sqlOptions.Value;
-        _fragOptions = fragOptions.Value;
+        _fragOptions = fragOptions;
         _logger = logger;
     }
 
@@ -36,7 +36,7 @@ public class IndexDiscoveryService : IIndexDiscoveryService
 
         // Build a set of already-monitored index keys for the AlreadyMonitored flag
         var monitoredKeys = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var m in _fragOptions.MonitoredIndexes)
+        foreach (var m in _fragOptions.CurrentValue.MonitoredIndexes)
             monitoredKeys.Add($"{m.Database}.{m.Schema}.{m.Table}.{m.Index}");
 
         try

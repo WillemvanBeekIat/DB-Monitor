@@ -44,10 +44,104 @@ DbMonitor.slnx
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download)
-- A SQL Server instance (2014 or newer)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (for PostgreSQL)
+- A SQL Server instance (2014 or newer) to monitor
 - SQL permissions listed in the [SQL Permissions](#sql-permissions) section
 
-### Step 1 — Configure the connection string
+---
+
+## Quick Start with Docker (Recommended)
+
+### Option 1: Using the Start Script
+
+```powershell
+# Start PostgreSQL and the application
+.\Start-DbMonitor.ps1
+
+# Or with pgAdmin for database management
+.\Start-DbMonitor.ps1 -WithPgAdmin
+```
+
+### Option 2: Manual Start
+
+```powershell
+# Start PostgreSQL container
+docker compose up -d
+
+# Wait for it to be healthy
+docker compose ps
+
+# Run the application
+cd src\DbMonitor.Web
+dotnet run
+```
+
+### Option 3: Using Visual Studio
+
+1. Open `DbMonitor.sln` in Visual Studio
+2. Select the **"Docker PostgreSQL"** launch profile from the dropdown
+3. Press F5 to debug (Docker containers start automatically)
+
+### Accessing Services
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| **DbMonitor Dashboard** | http://localhost:5000 | - |
+| **pgAdmin** (optional) | http://localhost:5050 | admin@dbmonitor.local / admin |
+
+---
+
+## Docker Commands
+
+```powershell
+# Start containers
+docker compose up -d
+
+# Start with pgAdmin
+docker compose --profile tools up -d
+
+# View logs
+docker compose logs -f postgres
+
+# Stop containers
+docker compose down
+
+# Reset database (removes all data)
+docker compose down -v
+# Or use: .\Start-DbMonitor.ps1 -Reset
+```
+
+---
+
+## PostgreSQL Database
+
+DbMonitor uses PostgreSQL for persistent storage of:
+
+| Table | Purpose |
+|-------|---------|
+| `instance_health` | Server health snapshots |
+| `database_health` | Per-database status |
+| `cooldowns` | Action cooldown tracking |
+| `bookmarks` | Error log bookmarks |
+| `audit_entries` | Action audit trail |
+
+**Migrations are applied automatically on application startup.**
+
+### Connection Details (Docker)
+
+```
+Host: localhost
+Port: 5432
+Database: dbmonitor
+Username: dbmonitor
+Password: dbmonitor_dev_password
+```
+
+---
+
+## Configuration
+
+### Step 1 — Configure the SQL Server to monitor
 
 Edit `src/DbMonitor.Web/appsettings.json`:
 
@@ -248,7 +342,6 @@ dotnet test tests/DbMonitor.Tests
 ## Version 1 Limitations
 
 - No authentication — localhost only
-- No database-backed history — files only
 - Settings are read-only except the dry-run toggle
 - No webhook notifications (interface ready, not wired)
 - No multi-instance support
@@ -261,7 +354,6 @@ dotnet test tests/DbMonitor.Tests
 | Webhook notifications | Implement `INotificationPublisher` |
 | Authentication | Add `[Authorize]` + ASP.NET Core Identity or OIDC |
 | Server deployment | Publish + IIS / nginx reverse proxy |
-| Database-backed history | Replace file stores with EF Core |
 | NoSQL log storage | Replace `ILogFileReader` with MongoDB/Elasticsearch |
 | Multiple SQL instances | Extend `SqlServerOptions` to a list |
 | Editable settings | Extend `IConfigWriter` to patch any JSON section |

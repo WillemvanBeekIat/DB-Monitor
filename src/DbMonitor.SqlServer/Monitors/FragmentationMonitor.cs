@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using DbMonitor.Core.Configuration;
@@ -15,30 +16,31 @@ namespace DbMonitor.SqlServer.Monitors;
 public class FragmentationMonitor : IFragmentationMonitor
 {
     private readonly SqlServerOptions _sqlOptions;
-    private readonly FragmentationOptions _fragOptions;
+    private readonly IOptionsMonitor<FragmentationOptions> _fragOptions;
     private readonly FragmentationEligibilityEvaluator _evaluator;
-    private readonly IStateStore _stateStore;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FragmentationMonitor> _logger;
 
     public FragmentationMonitor(
         IOptions<SqlServerOptions> sqlOptions,
-        IOptions<FragmentationOptions> fragOptions,
+        IOptionsMonitor<FragmentationOptions> fragOptions,
         FragmentationEligibilityEvaluator evaluator,
-        IStateStore stateStore,
+        IServiceScopeFactory scopeFactory,
         ILogger<FragmentationMonitor> logger)
     {
         _sqlOptions = sqlOptions.Value;
-        _fragOptions = fragOptions.Value;
+        _fragOptions = fragOptions;
         _evaluator = evaluator;
-        _stateStore = stateStore;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
     public async Task<IReadOnlyList<IndexInfo>> CheckAsync(CancellationToken ct = default)
     {
         var result = new List<IndexInfo>();
+        var fragOptions = _fragOptions.CurrentValue;
 
-        if (!_fragOptions.Enabled || _fragOptions.MonitoredIndexes.Count == 0)
+        if (!fragOptions.Enabled || fragOptions.MonitoredIndexes.Count == 0)
             return result;
 
         try
@@ -51,7 +53,7 @@ public class FragmentationMonitor : IFragmentationMonitor
             using var conn = new SqlConnection(csb.ConnectionString);
             await conn.OpenAsync(ct);
 
-            foreach (var indexConfig in _fragOptions.MonitoredIndexes)
+            foreach (var indexConfig in fragOptions.MonitoredIndexes)
             {
                 if (!indexConfig.Enabled) continue;
 
@@ -61,8 +63,10 @@ public class FragmentationMonitor : IFragmentationMonitor
                     if (info != null)
                     {
                         var cooldownKey = $"frag:{indexConfig.Database}.{indexConfig.Schema}.{indexConfig.Table}.{indexConfig.Index}";
-                        var cooldownUntil = await _stateStore.LoadCooldownAsync(cooldownKey, ct);
-                        var (eligible, reason) = _evaluator.Evaluate(info, indexConfig, cooldownUntil, _fragOptions.CooldownMinutes);
+                        using var scope = _scopeFactory.CreateScope();
+                        var stateStore = scope.ServiceProvider.GetRequiredService<IStateStore>();
+                        var cooldownUntil = await stateStore.LoadCooldownAsync(cooldownKey, ct);
+                        var (eligible, reason) = _evaluator.Evaluate(info, indexConfig, cooldownUntil, fragOptions.CooldownMinutes);
                         info.IsEligible = eligible;
                         info.IneligibilityReason = reason;
                         result.Add(info);

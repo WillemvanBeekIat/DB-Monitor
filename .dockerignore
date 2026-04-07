@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.vs
+.vscode
+*.user
+*.suo
+
+# Build outputs
+**/bin
+**/obj
+**/publish
+**/out
+
+# Test results
+**/TestResults
+
+# Data directories
+data/
+logs/
+
+# Documentation
+*.md
+!README.md
+
+# Docker
+docker-compose*.yml
+Dockerfile*
+.dockerignore
