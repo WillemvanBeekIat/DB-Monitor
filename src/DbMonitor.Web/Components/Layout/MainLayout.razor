@@ -1,41 +1,58 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
 @inject NavigationManager Nav
+@implements IDisposable
 
-<div class="app-shell @(_isDark ? "theme-dark" : "theme-light")">
+<div class="app-shell theme-dark">
     <nav class="sidebar">
         <div class="sidebar-header">
-            <span class="sidebar-logo">&#128202;</span>
-            <span class="sidebar-title">DB Monitor</span>
+            <span class="sidebar-logo">⬡</span>
+            <span class="sidebar-title">DB·MONITOR</span>
         </div>
         <ul class="nav-list">
-            <li><NavLink href="/" Match="NavLinkMatch.All" class="nav-item"><span class="nav-icon">&#9632;</span> Dashboard</NavLink></li>
-            <li><NavLink href="/queries" class="nav-item"><span class="nav-icon">&#9654;</span> Long Queries</NavLink></li>
-            <li><NavLink href="/indexes" class="nav-item"><span class="nav-icon">&#128196;</span> Indexes</NavLink></li>
-            <li><NavLink href="/errors" class="nav-item"><span class="nav-icon">&#9888;</span> Errors</NavLink></li>
-            <li><NavLink href="/audit" class="nav-item"><span class="nav-icon">&#128221;</span> Audit Trail</NavLink></li>
-            <li><NavLink href="/logs" class="nav-item"><span class="nav-icon">&#128196;</span> Logs</NavLink></li>
-            <li><NavLink href="/settings" class="nav-item"><span class="nav-icon">&#9881;</span> Settings</NavLink></li>
+            <li><NavLink href="/" Match="NavLinkMatch.All" class="nav-item"><span class="nav-icon">◈</span> Dashboard</NavLink></li>
+            <li><NavLink href="/queries" class="nav-item"><span class="nav-icon">▶</span> Long Queries</NavLink></li>
+            <li><NavLink href="/indexes" class="nav-item"><span class="nav-icon">◧</span> Indexes</NavLink></li>
+            <li><NavLink href="/import-indexes" class="nav-item"><span class="nav-icon">⬇</span> Import Indexes</NavLink></li>
+            <li><NavLink href="/errors" class="nav-item"><span class="nav-icon">⚡</span> Errors</NavLink></li>
+            <li><NavLink href="/audit" class="nav-item"><span class="nav-icon">◉</span> Audit Trail</NavLink></li>
+            <li><NavLink href="/logs" class="nav-item"><span class="nav-icon">≡</span> Logs</NavLink></li>
+            <li><NavLink href="/settings" class="nav-item"><span class="nav-icon">⚙</span> Settings</NavLink></li>
         </ul>
         <div class="sidebar-footer">
-            <button class="theme-toggle-btn" @onclick="ToggleTheme" title="Toggle theme">
-                @(_isDark ? "&#9728;" : "&#9790;") @(_isDark ? "Light" : "Dark")
-            </button>
+            <div style="font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;text-align:center;letter-spacing:0.08em;opacity:0.6">
+                COMMAND CENTER v2030
+            </div>
         </div>
     </nav>
     <main class="main-content">
         <div class="topbar">
-            <button class="hamburger" @onclick="ToggleSidebar">&#9776;</button>
-            <span class="topbar-title">DB Monitor</span>
+            <button class="hamburger" @onclick="ToggleSidebar">☰</button>
+            <span class="topbar-title">DB·MONITOR</span>
+            <span style="flex:1"></span>
+            <span style="font-size:11px;color:var(--text-muted);font-family:'JetBrains Mono',monospace;letter-spacing:0.06em">
+                @_now.ToString("yyyy-MM-dd HH:mm:ss") UTC
+            </span>
         </div>
         @Body
     </main>
 </div>
 
 @code {
-    private bool _isDark = true;
     private bool _sidebarOpen = false;
+    private DateTime _now = DateTime.UtcNow;
+    private Timer? _clockTimer;
 
-    private void ToggleTheme() => _isDark = !_isDark;
+    protected override void OnInitialized()
+    {
+        _clockTimer = new Timer(_ => InvokeAsync(() =>
+        {
+            _now = DateTime.UtcNow;
+            StateHasChanged();
+        }), null, TimeSpan.Zero, TimeSpan.FromSeconds(1));
+    }
+
     private void ToggleSidebar() => _sidebarOpen = !_sidebarOpen;
+
+    public void Dispose() => _clockTimer?.Dispose();
 }
 
